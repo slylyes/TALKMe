@@ -24,7 +24,7 @@ import java.util.*;
 public class ParquetParser {
     private final ParquetReader<Group> reader;
     private final List<String> columnNames;
-    private final List<String> columnTypes;
+    private final List<Type> columnTypes;
     private final int batchSize;
 
     public ParquetParser(String parquetFile, int batchSize) throws IOException {
@@ -46,7 +46,7 @@ public class ParquetParser {
     }
 
     // Function to get column types
-    public List<String> getColumnTypes() {
+    public List<Type> getColumnTypes() {
         return columnTypes;
     }
 
@@ -87,12 +87,8 @@ public class ParquetParser {
     }
 
     // Extract column types from schema
-    private List<String> extractColumnTypes(MessageType schema) {
-        List<String> types = new ArrayList<>();
-        for (Type field : schema.getFields()) {
-            types.add(field.asPrimitiveType().getPrimitiveTypeName().name());
-        }
-        return types;
+    private List<Type> extractColumnTypes(MessageType schema) {
+        return new ArrayList<Type>(schema.getFields());
     }
 
     // Close the reader
@@ -100,35 +96,34 @@ public class ParquetParser {
         reader.close();
     }
 
-    // Example usage
-//    public static void main(String[] args) throws IOException {
-//        String parquetFile = "data/yellow_tripdata_2009-01.parquet";
-//        int batchSize = 5; // Adjust as needed
-//
-//        ParquetParser parquetReader = new ParquetParser(parquetFile, batchSize);
-//
-//        // Fetch column names
-//        System.out.println("Column Names: " + parquetReader.getColumnNames());
-//
-//        // Fetch column types
-//        System.out.println("Column Types: " + parquetReader.getColumnTypes());
-//
-//        // Fetch and display first batch of data
-//        List<List<Object>> batch = parquetReader.getNextBatch();
-//        System.out.println("\nFirst Batch (" + batch.size() + " rows):");
-//        for (List<Object> row : batch) {
-//            System.out.println(row);
-//        }
-//
-//        // Fetch and display second batch of data
-//        List<List<Object>> nextBatch = parquetReader.getNextBatch();
-//        System.out.println("\nSecond Batch (" + nextBatch.size() + " rows):");
-//        for (List<Object> row : nextBatch) {
-//            System.out.println(row);
-//        }
-//
-//        parquetReader.close();
-//    }
+    public static void main(String[] args) throws IOException {
+        String parquetFile = "data/yellow_tripdata_2009-01.parquet";
+        int batchSize = 50; // Adjust as needed
+
+        ParquetParser parquetReader = new ParquetParser(parquetFile, batchSize);
+
+        // Fetch column names
+        System.out.println("Column Names: " + parquetReader.getColumnNames());
+
+        // Fetch column types
+        System.out.println("Column Types: " + parquetReader.getColumnTypes());
+
+        // Fetch and display first batch of data
+        List<List<Object>> batch = parquetReader.getNextBatch();
+        System.out.println("\nFirst Batch (" + batch.size() + " rows):");
+        for (List<Object> row : batch) {
+            System.out.println(row);
+        }
+
+        // Fetch and display second batch of data
+        List<List<Object>> nextBatch = parquetReader.getNextBatch();
+        System.out.println("\nSecond Batch (" + nextBatch.size() + " rows):");
+        for (List<Object> row : nextBatch) {
+            System.out.println(row);
+        }
+
+        parquetReader.close();
+    }
 }
 
 
