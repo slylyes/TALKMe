@@ -1,4 +1,4 @@
-package TalkMe.rest_api;
+package talkme.rest_api;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -8,7 +8,6 @@ import javax.ws.rs.core.MediaType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 @Path("/data")
 public class DataResource {

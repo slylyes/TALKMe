@@ -1,26 +1,39 @@
 package talkme.table;
 
-import TalkMe.parser.ParquetParser;
 import org.apache.parquet.schema.Type;
-import org.checkerframework.checker.units.qual.C;
-
-import java.io.IOException;
 import java.util.*;
 
 public class Table {
-    private String name;
+    private final String name;
     private final List<Column> columns = new ArrayList<Column>();
-    private long raw;
+    private final Stockage st= new Stockage();
 
     public Table(String name){
         this.name = name;
     }
 
-    public long getRaw() {
-        return raw;
+
+
+    public void setColumns(List<String> names, List<Type> types) {
+        if (names.size() != types.size()) {
+            throw new IllegalArgumentException("Les listes names et types doivent avoir la même taille !");
+        }
+
+        for (int i = 0; i < names.size(); i++) {
+            columns.add(new Column(names.get(i),  types.get(i)));
+        }
+        st.putCols(columns);
+    }
+
+    public void insert(List<List<Object>> rows) {
+        st.insert(columns,rows);
     }
 
     public List<Column> getColumns() {
         return columns;
+    }
+
+    public String getName() {
+        return name;
     }
 }

@@ -1,4 +1,4 @@
-package TalkMe.rest_api;
+package talkme.rest_api;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
