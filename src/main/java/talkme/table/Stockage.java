@@ -26,6 +26,15 @@ public class Stockage {
             }
     }
 
+    public List<List<Object>> select(List<Column> cols){
+
+        List<List<Object>> selected= new ArrayList<>();
+
+        for (Column col: cols){
+            selected.add(new ArrayList<>(st.get(col)));
+        }
+        return  selected;
+    }
 
     public boolean testRowStructure(List<Column> struct){
         for (Column col: st.keySet()){
