@@ -36,6 +36,93 @@ public class Stockage {
         return  selected;
     }
 
+    public List<Integer> whereEquals(Column col,Object compared){
+        List<Integer> selectedIndex= new ArrayList<>();
+        List<Object> values= st.get(col);
+
+        for (int i=0; i<values.size(); i++){
+            if (compare(values.get(i), compared) == 0){
+                selectedIndex.add(i);
+            }
+        }
+
+        return selectedIndex;
+    }
+
+    public List<Integer> whereEquals(Column col,Object compared, List<Integer> prevSelected){
+        List<Integer> selectedIndex= new ArrayList<>();
+        List<Object> values= st.get(col);
+
+        for (int i: prevSelected){
+            if (compare(values.get(i), compared) == 0){
+                selectedIndex.add(i);
+            }
+        }
+
+        return selectedIndex;
+    }
+
+    public List<Integer> whereLessThan(Column col, Object compared) {
+        List<Integer> selectedIndex = new ArrayList<>();
+        List<Object> values = st.get(col);
+
+        for (int i = 0; i < values.size(); i++) {
+            if (compare(values.get(i), compared) < 0) {
+                selectedIndex.add(i);
+            }
+        }
+
+        return selectedIndex;
+    }
+
+    public List<Integer> whereLessThan(Column col, Object compared, List<Integer> prevSelected) {
+        List<Integer> selectedIndex = new ArrayList<>();
+        List<Object> values = st.get(col);
+
+        for (int i : prevSelected) {
+            if (compare(values.get(i), compared) < 0) {
+                selectedIndex.add(i);
+            }
+        }
+
+        return selectedIndex;
+    }
+
+    public List<Integer> whereGreaterThan(Column col, Object compared) {
+        List<Integer> selectedIndex = new ArrayList<>();
+        List<Object> values = st.get(col);
+
+        for (int i = 0; i < values.size(); i++) {
+            if (compare(values.get(i), compared) > 0) {
+                selectedIndex.add(i);
+            }
+        }
+
+        return selectedIndex;
+    }
+
+    public List<Integer> whereGreaterThan(Column col, Object compared, List<Integer> prevSelected) {
+        List<Integer> selectedIndex = new ArrayList<>();
+        List<Object> values = st.get(col);
+
+        for (int i : prevSelected) {
+            if (compare(values.get(i), compared) > 0) {
+                selectedIndex.add(i);
+            }
+        }
+
+        return selectedIndex;
+    }
+
+    // Utility method for comparison
+    @SuppressWarnings("unchecked")
+    private int compare(Object a, Object b) {
+        if (a instanceof Comparable && b instanceof Comparable) {
+            return ((Comparable<Object>) a).compareTo(b);
+        }
+        throw new IllegalArgumentException("Objects are not comparable");
+    }
+
     public boolean testRowStructure(List<Column> struct){
         for (Column col: st.keySet()){
             if (!struct.contains(col)) return false;
