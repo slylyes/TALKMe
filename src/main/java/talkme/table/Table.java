@@ -1,6 +1,8 @@
 package talkme.table;
 
 import org.apache.parquet.schema.Type;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.*;
 
 public class Table {
@@ -14,14 +16,9 @@ public class Table {
 
 
 
-    public void setColumns(List<String> names, List<Type> types) {
-        if (names.size() != types.size()) {
-            throw new IllegalArgumentException("Les listes names et types doivent avoir la même taille !");
-        }
-
-        for (int i = 0; i < names.size(); i++) {
-            columns.add(new Column(names.get(i),  types.get(i)));
-        }
+    @JsonProperty("columns")
+    public void setColumns(List<Column> columns) {
+        this.columns.addAll(columns);
         st.putCols(columns);
     }
 

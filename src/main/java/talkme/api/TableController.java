@@ -3,45 +3,27 @@ package talkme.api;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 import talkme.parser.ParquetParser;
+import talkme.table.Database;
 import talkme.table.Table;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import org.apache.parquet.schema.Type;
+
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
 
+import static talkme.table.Database.tableMap;
+
 @Path("/api")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class TableController {
-    private static Map<String, Table> tableMap = new HashMap<>();
-
-    //Conversion des types données en String en List de Types
-    private List<Type> readTypes(String types) {
-        List<Type> res = new ArrayList<>();
-        for (String type : types.split(",")) {
-            switch (type.trim()) { // trim to avoid whitespace issues
-                case "INT64":
-                    res.add(Types.primitive(PrimitiveType.PrimitiveTypeName.INT64, Type.Repetition.REQUIRED).named("INT64"));
-                    break;
-                case "BINARY":
-                    res.add(Types.primitive(PrimitiveType.PrimitiveTypeName.BINARY, Type.Repetition.REQUIRED).named("BIN"));
-                    break;
-                case "DOUBLE":
-                    res.add(Types.primitive(PrimitiveType.PrimitiveTypeName.DOUBLE, Type.Repetition.REQUIRED).named("DBL"));
-                    break;
-                default:
-                    System.out.println("Unknown type: " + type);
-            }
-        }
-        return res;
-    }
-
     /*
     * Création d'une table vide
     * Paramètres:
@@ -53,26 +35,17 @@ public class TableController {
      */
     @POST
     @Path("/table")
-
-    public Response create(Table t,
-            @QueryParam("name") String name,
-            @QueryParam("columns") String columns,
-            @QueryParam("columnTypes") String columnTypes
-    ){
+    public Response create(Table t){
         //On vérifie si une table de même nom existe déjà
-        if(tableMap.containsKey(name)){
-            return Response.status(Response.Status.PRECONDITION_FAILED)
-                    .entity("Une table de même nom existe déjà!").build();
+        //Vérifier si name est null/vide
+        if(t.getName() == null || t.getName().isEmpty()){
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorMessage("Nom de table invalide")).build();
         }
 
-        Table t = new Table(name);
-        // Vérifier si arguments valides ou pas
-        System.out.println(List.of(columns.split(",")).toString()+readTypes(columnTypes).toString());
-        t.setColumns(List.of(columns.split(",")), readTypes(columnTypes));
-
-        tableMap.put(name, t); // Ajout de la table dans la Map contenant toutes les tables
+        Database.add(t); // Ajout de la table dans la Map contenant toutes les tables
         return Response.status(Response.Status.CREATED)
-                .entity("Nouvelle table créée: "+t.toString()).build();
+                .entity(t).build();
     }
 
     /*
@@ -88,11 +61,10 @@ public class TableController {
      */
     @PUT
     @Path("/upload")
-    @Consumes(MediaType.APPLICATION_JSON)
     public Response upload(
-            @QueryParam("table") String table,
-            @QueryParam("filename") String fileName,
-            @QueryParam("offset") int offset
+            @QueryParam("tableName") String table,
+            @QueryParam("limite") int limite,
+            InputStream parquetFile
     ){
 
         //On vérifie si la table existe
