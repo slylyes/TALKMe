@@ -1,4 +1,4 @@
-package talkme.rest_api;
+package talkme.api;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -10,13 +10,13 @@ import java.util.Arrays;
 import java.util.List;
 
 @Path("/data")
-public class DataResource {
+public class QueryController {
 
     //List<List<Object>> data = parquetReader.getNextBatch();
 
     private List<List<Object>> data = new ArrayList<>();
 
-    public DataResource() {
+    public QueryController() {
         List<Object> names = new ArrayList<>(Arrays.asList("Alice", "Bob", "Charlie", "David"));
         List<Object> ages = new ArrayList<>(Arrays.asList(25, 30, 28, 35));
         data.add(names);

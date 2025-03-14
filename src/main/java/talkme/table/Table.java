@@ -36,4 +36,9 @@ public class Table {
     public String getName() {
         return name;
     }
+
+    @Override
+    public String toString(){
+        return name+"\nColumns: "+columns+"\nData: "+st.getSt().toString();
+    }
 }
