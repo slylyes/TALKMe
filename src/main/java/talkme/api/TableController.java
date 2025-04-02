@@ -77,7 +77,6 @@ public class TableController {
         }
 
         Table table = tableMap.get(tableName);
-        int batchSize = 5;
 
         try {
             ParquetParser parser = new ParquetParser(parquetFile, limite);
