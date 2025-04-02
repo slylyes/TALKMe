@@ -36,7 +36,7 @@ public class Stockage {
         return  selected;
     }
 
-    public List<Integer> whereEquals(Column col,Object compared){
+    public List<Integer> andEquals(Column col,Object compared){
         List<Integer> selectedIndex= new ArrayList<>();
         List<Object> values= st.get(col);
 
@@ -49,7 +49,7 @@ public class Stockage {
         return selectedIndex;
     }
 
-    public List<Integer> whereEquals(Column col,Object compared, List<Integer> prevSelected){
+    public List<Integer> andEquals(Column col,Object compared, List<Integer> prevSelected){
         List<Integer> selectedIndex= new ArrayList<>();
         List<Object> values= st.get(col);
 
@@ -62,7 +62,7 @@ public class Stockage {
         return selectedIndex;
     }
 
-    public List<Integer> whereLessThan(Column col, Object compared) {
+    public List<Integer> andLessThan(Column col, Object compared) {
         List<Integer> selectedIndex = new ArrayList<>();
         List<Object> values = st.get(col);
 
@@ -75,7 +75,7 @@ public class Stockage {
         return selectedIndex;
     }
 
-    public List<Integer> whereLessThan(Column col, Object compared, List<Integer> prevSelected) {
+    public List<Integer> andLessThan(Column col, Object compared, List<Integer> prevSelected) {
         List<Integer> selectedIndex = new ArrayList<>();
         List<Object> values = st.get(col);
 
@@ -88,7 +88,7 @@ public class Stockage {
         return selectedIndex;
     }
 
-    public List<Integer> whereGreaterThan(Column col, Object compared) {
+    public List<Integer> andGreaterThan(Column col, Object compared) {
         List<Integer> selectedIndex = new ArrayList<>();
         List<Object> values = st.get(col);
 
@@ -101,7 +101,7 @@ public class Stockage {
         return selectedIndex;
     }
 
-    public List<Integer> whereGreaterThan(Column col, Object compared, List<Integer> prevSelected) {
+    public List<Integer> andGreaterThan(Column col, Object compared, List<Integer> prevSelected) {
         List<Integer> selectedIndex = new ArrayList<>();
         List<Object> values = st.get(col);
 
