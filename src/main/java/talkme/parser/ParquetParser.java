@@ -20,36 +20,36 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import talkme.table.Column;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
 
 public class ParquetParser {
     private final ParquetReader<Group> reader;
     private final List<String> columnNames;
     private final List<Type> columnTypes;
     private final int batchSize;
-    private final int maxTotalRead;
     private int nbRead=0;
 
-    public ParquetParser(String parquetFile, int batchSize, int offset, int maxTotalRead) throws IOException {
+    public ParquetParser(File parquetStream, int batchSize) throws IOException {
         Configuration configuration = new Configuration();
         this.batchSize = batchSize;
-        this.maxTotalRead=maxTotalRead;
-        // Initialize reader
-        this.reader = ParquetReader.builder(new GroupReadSupport(), new Path(parquetFile)).build();
-        skipRows(offset);
+
+        //Initialize InputStream as a Hadoop FSDataInputStream
+        FileSystem fs = FileSystem.get(configuration);
+        FSDataInputStream fsDataInputStream = new FSDataInputStream(new FileInputStream(parquetStream));
+
+        // Initialize reader using InputStream
+        this.reader = ParquetReader.builder(new GroupReadSupport(), new Path(parquetStream.toURI())).build();
+
         // Extract schema
-        MessageType schema = getSchema(parquetFile, configuration);
+        MessageType schema = getSchema();
         this.columnNames = extractColumnNames(schema);
         this.columnTypes = extractColumnTypes(schema);
-    }
-
-    private void skipRows(int offset) throws IOException {
-        for (int i = 0; i < offset; i++) {
-            if (reader.read() == null) {
-                break; // Stop if end of file is reached
-            }
-        }
     }
 
     public List<String> getColumnNames() {
@@ -71,7 +71,7 @@ public class ParquetParser {
 
         // Read records and distribute values into column lists
         for (int i = 0; i < batchSize; i++) {
-            if (nbRead >= maxTotalRead) break;
+            if (nbRead >= batchSize) break;
 
             Group record = reader.read();
             if (record == null) break; // No more data
@@ -89,10 +89,8 @@ public class ParquetParser {
     }
 
 
-    private static MessageType getSchema(String parquetFile, Configuration configuration) throws IOException {
-        try (ParquetReader<Group> schemaReader = ParquetReader.builder(new GroupReadSupport(), new Path(parquetFile)).build()) {
-            return (MessageType) schemaReader.read().getType();
-        }
+    private MessageType getSchema() throws IOException {
+        return (MessageType) reader.read().getType();
     }
 
     // Extract column names from schema
@@ -124,41 +122,4 @@ public class ParquetParser {
     public void close() throws IOException {
         reader.close();
     }
-
-    // Example usage
-    public static void main(String[] args) throws IOException {
-        long startTime = System.nanoTime();
-        String parquetFile = "data/yellow_tripdata_2009-01.parquet";
-        int batchSize = 5; // Adjust as needed
-
-        ParquetParser parquetReader = new ParquetParser(parquetFile, batchSize,0,100000);
-
-        // Fetch column names
-        System.out.println("Column Names: " + parquetReader.getColumnNames());
-
-        // Fetch column types
-        System.out.println("Column Types: " + parquetReader.getColumnTypes());
-
-        // Fetch and display first batch of data
-        List<List<Object>> batch = parquetReader.getNextBatch();
-        System.out.println("\nFirst Batch (" + batch.size() + " rows):");
-        for (List<Object> row : batch) {
-            System.out.println(row);
-        }
-
-        // Fetch and display second batch of data
-        List<List<Object>> nextBatch = parquetReader.getNextBatch();
-        System.out.println("\nSecond Batch (" + nextBatch.size() + " rows):");
-        for (List<Object> row : nextBatch) {
-            System.out.println(row);
-        }
-
-        parquetReader.close();
-        long endTime = System.nanoTime(); // End timing
-        long executionTime = endTime - startTime; // Compute execution time
-
-        System.out.println("Execution time: " + executionTime / 1_000_000.0 + " ms");
-    }
-
-
 }
