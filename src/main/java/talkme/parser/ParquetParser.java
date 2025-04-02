@@ -20,36 +20,36 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import talkme.table.Column;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.*;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileSystem;
 
 public class ParquetParser {
     private final ParquetReader<Group> reader;
     private final List<String> columnNames;
     private final List<Type> columnTypes;
     private final int batchSize;
+    private final int maxTotalRead;
     private int nbRead=0;
 
-    public ParquetParser(File parquetStream, int batchSize) throws IOException {
+    public ParquetParser(String parquetFile, int batchSize, int offset, int maxTotalRead) throws IOException {
         Configuration configuration = new Configuration();
         this.batchSize = batchSize;
-
-        //Initialize InputStream as a Hadoop FSDataInputStream
-        FileSystem fs = FileSystem.get(configuration);
-        FSDataInputStream fsDataInputStream = new FSDataInputStream(new FileInputStream(parquetStream));
-
-        // Initialize reader using InputStream
-        this.reader = ParquetReader.builder(new GroupReadSupport(), new Path(parquetStream.toURI())).build();
-
+        this.maxTotalRead=maxTotalRead;
+        // Initialize reader
+        this.reader = ParquetReader.builder(new GroupReadSupport(), new Path(parquetFile)).build();
+        skipRows(offset);
         // Extract schema
-        MessageType schema = getSchema();
+        MessageType schema = getSchema(parquetFile, configuration);
         this.columnNames = extractColumnNames(schema);
         this.columnTypes = extractColumnTypes(schema);
+    }
+
+    private void skipRows(int offset) throws IOException {
+        for (int i = 0; i < offset; i++) {
+            if (reader.read() == null) {
+                break; // Stop if end of file is reached
+            }
+        }
     }
 
     public List<String> getColumnNames() {
@@ -71,7 +71,7 @@ public class ParquetParser {
 
         // Read records and distribute values into column lists
         for (int i = 0; i < batchSize; i++) {
-            if (nbRead >= batchSize) break;
+            if (nbRead >= maxTotalRead) break;
 
             Group record = reader.read();
             if (record == null) break; // No more data
@@ -89,8 +89,10 @@ public class ParquetParser {
     }
 
 
-    private MessageType getSchema() throws IOException {
-        return (MessageType) reader.read().getType();
+    private static MessageType getSchema(String parquetFile, Configuration configuration) throws IOException {
+        try (ParquetReader<Group> schemaReader = ParquetReader.builder(new GroupReadSupport(), new Path(parquetFile)).build()) {
+            return (MessageType) schemaReader.read().getType();
+        }
     }
 
     // Extract column names from schema
@@ -122,4 +124,43 @@ public class ParquetParser {
     public void close() throws IOException {
         reader.close();
     }
+
+    public static void main(String[] args) throws IOException {
+        long startTime = System.nanoTime();
+        String parquetFile = "data/yellow_tripdata_2009-01.parquet";
+        int batchSize = 1000000;// Adjust as needed
+        int maxTotalRead = 10000000;
+
+        ParquetParser parquetReader = new ParquetParser(parquetFile, batchSize, 0, maxTotalRead);
+
+        // Fetch column names
+        System.out.println("Column Names: " + parquetReader.getColumnNames());
+        System.out.println("Column Types: " + parquetReader.getColumnTypes());
+
+        Runtime runtime = Runtime.getRuntime();
+        int totalRowsRead = 0;
+
+        while (true) {
+            long st = System.nanoTime();
+            List<List<Object>> batch = parquetReader.getNextBatch();
+            if (batch.isEmpty()) break;
+
+            totalRowsRead += batch.size();
+            long memoryUsed = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024);
+
+            System.out.println("Memory Used: " + memoryUsed + " MB");
+
+            long ed = System.nanoTime();
+            System.out.println("Execution time: " + (ed-st) / 1_000_000.0 + " ms");
+        }
+
+        parquetReader.close();
+        long endTime = System.nanoTime();
+        long executionTime = endTime - startTime;
+
+        System.out.println("Total Rows Processed: " + totalRowsRead);
+        System.out.println("Total Execution time: " + executionTime / 1_000_000.0 + " ms");
+    }
+
+
 }
