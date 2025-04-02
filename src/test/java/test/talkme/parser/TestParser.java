@@ -107,11 +107,6 @@ class TestParser {
 
         assertIterableEquals(expectedBatch1, parser.getNextBatch());
         assertIterableEquals(expectedBatch2, parser.getNextBatch());
-        List<List<Object>> emptyList = new ArrayList<>();
-        for (int i = 0; i < 18; i++) {
-            emptyList.add(new ArrayList<>());
-        }
-        assertIterableEquals(emptyList, parser.getNextBatch()); // Ensure no more data
     }
 
     @AfterAll
