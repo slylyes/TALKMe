@@ -9,6 +9,7 @@ import org.apache.parquet.schema.PrimitiveType;
 //import org.apache.parquet.schema.Types;
 import talkme.parser.ParquetParser;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,7 +31,7 @@ class TestParser {
     @BeforeAll
     static void setup() throws IOException {
         String testFile = "data/yellow_tripdata_2009-01.parquet";
-        parser = new ParquetParser(testFile, 5, 0, 10);
+        parser = new ParquetParser(new File(testFile), 5);
     }
 
     @Test
