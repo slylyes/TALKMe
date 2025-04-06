@@ -1,9 +1,11 @@
 package test.talkme.table;
 
-import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
 import org.junit.jupiter.api.Test;
 import talkme.table.Column;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -11,32 +13,37 @@ class ColumnTest {
 
     @Test
     void testColumnEquality() {
-        Type type1 = new PrimitiveType(Type.Repetition.OPTIONAL, PrimitiveType.PrimitiveTypeName.BINARY, "column1");
-        Type type2 = new PrimitiveType(Type.Repetition.OPTIONAL, PrimitiveType.PrimitiveTypeName.INT32, "column1");
+        String type1 = "BINARY";
+        String type2 = "INT32";
+        
+        List<Object> values1 = new ArrayList<>();
+        List<Object> values2 = Arrays.asList(1, 2, 3);
+        
+        Column col1 = new Column(type1, values1);
+        Column col2 = new Column(type1, values1);
+        Column col3 = new Column(type1, values2);
+        Column col4 = new Column(type2, values1);
 
-        Column col1 = new Column("col1", type1);
-        Column col2 = new Column("col1", type1);
-        Column col3 = new Column("col2", type1);
-        Column col4 = new Column("col1", type2);
-
-        assertEquals(col1, col2, "Columns with same name and type should be equal");
-        assertNotEquals(col1, col3, "Columns with different names should not be equal");
+        assertEquals(col1, col2, "Columns with same type and values should be equal");
+        assertNotEquals(col1, col3, "Columns with different values should not be equal");
         assertNotEquals(col1, col4, "Columns with different types should not be equal");
     }
 
     @Test
     void testGetters() {
-        Type type = new PrimitiveType(Type.Repetition.OPTIONAL, PrimitiveType.PrimitiveTypeName.INT64, "column2");
-        Column column = new Column("column2", type);
+        String type = "INT64";
+        List<Object> values = Arrays.asList(1L, 2L, 3L);
+        Column column = new Column(type, values);
 
-        assertEquals("column2", column.getName(), "getName() should return the correct name");
         assertEquals(type, column.getType(), "getType() should return the correct type");
+        assertEquals(values, column.getValues(), "getValues() should return the correct values");
     }
 
     @Test
     void testInequalityWithNull() {
-        Type type = new PrimitiveType(Type.Repetition.OPTIONAL, PrimitiveType.PrimitiveTypeName.BOOLEAN, "column3");
-        Column column = new Column("column3", type);
+        String type = "BOOLEAN";
+        List<Object> values = Arrays.asList(true, false, true);
+        Column column = new Column(type, values);
 
         assertNotEquals(null, column, "A column should not be equal to null");
     }

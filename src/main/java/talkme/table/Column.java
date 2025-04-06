@@ -1,30 +1,31 @@
 package talkme.table;
-import org.apache.parquet.schema.Type;
 
-import java.util.Objects;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.List;
 
 public class Column {
+    private String type;
+    private List<Object> values;
 
-    private final String name;
-    private final Type type;
-
-    public Column(String name, Type type){
+    // Getters and setters
+    @JsonCreator
+    public Column(@JsonProperty("type") String type,
+                  @JsonProperty("values") List<Object> values) {
         this.type = type;
-        this.name = name;
+        this.values = values;
     }
 
     public boolean equals(Object o){
         if (this==o) return true;
         if (!(o instanceof Column ot)) return false;
 
-        return (Objects.equals(this.name, ot.getName())) && (this.type == ot.getType());
+        return ((type.equals(ot.getType())) && (values.equals(ot.getValues())));
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public Type getType() {
-        return type;
+    public String getType(){ return type; }
+    public List<Object> getValues() {
+        return values;
     }
 }
