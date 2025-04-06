@@ -1,0 +1,8 @@
+talkme\api\TableController.class
+talkme\table\Column.class
+talkme\table\SameNameException.class
+talkme\table\Table.class
+talkme\parser\ParquetParser.class
+talkme\table\MoteurStockage.class
+talkme\table\Database.class
+talkme\api\QueryController.class
