@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import talkme.table.Column;
 import talkme.table.ColonnesException;
-import talkme.table.MoteurStockage;
+import talkme.query.MoteurStockage;
 import talkme.table.Table;
 
 class MoteurStockageTest {

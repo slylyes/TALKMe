@@ -4,7 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import talkme.table.Column;
 import talkme.table.ColonnesException;
-import talkme.table.MoteurStockage;
+import talkme.query.MoteurStockage;
 import talkme.table.Table;
 
 import java.util.*;

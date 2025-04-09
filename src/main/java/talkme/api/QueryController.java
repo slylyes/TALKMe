@@ -1,13 +1,18 @@
 package talkme.api;
 
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
+import talkme.query.MoteurStockage;
+import talkme.query.Query;
+import talkme.table.Table;
+
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Path("/data")
 public class QueryController {
@@ -33,9 +38,9 @@ public class QueryController {
         List<List<Object>> res = new ArrayList<>();
         List<String> col_spec = List.of(colonnes.split(","));
         for(String col: col_spec){
-            if(col == "name"){
+            if(Objects.equals(col, "name")){
                 res.add(data.get(0));
-            } else if (col == "age") {
+            } else if (Objects.equals(col, "age")) {
                 res.add(data.get(1));
             }
         }
@@ -46,26 +51,37 @@ public class QueryController {
     @GET
     @Path("/filter")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<List<Object>> where(
-            @QueryParam("colonne") String colonne,
-            @QueryParam("operateur") String operateur,
-            @QueryParam("valeur") String valeur
-    ){
-        /*Exemple de parametres:
-            colonne: "age"
-            operateur: ">="
-            valeur: "20"
-         */
+    public List<List<Object>> filter(
+            @RequestBody Query query
+            ){
+        List<Integer> filteredIndexes = handleConditions(query);
+        data=  MoteurStockage.select(query.getTable(),query.getColumns(), filteredIndexes);
+
         return data;
     }
 
-//    @GET
-//    @Path("/filter")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    //Creer nouvelle classe pour resultat de cette fonction?
-//    public List<Map<String, List<List<Object>>>> groupBy(
-//            @QueryParam("colonne") String colonne
-//    ){
-//        return null;
-//    }
+    private List<Integer> handleConditions(Query query){
+        int nbRows = query.getTable().getColumns().get(query.getColumns().get(0)).getValues().size();
+        List<Integer> filteredIndexes= IntStream.range(0, nbRows).boxed().toList();
+        Table t= query.getTable();
+
+        for (List<String> condition: query.getFilters()){
+
+            if (condition.get(0).equals("and")) {
+                filteredIndexes = switch (condition.get(2)) {
+                    case "=" ->
+                            MoteurStockage.whereEquals(t.getColumns().get(condition.get(1)), condition.get(3), filteredIndexes);
+                    case "<" ->
+                            MoteurStockage.whereLessThan(t.getColumns().get(condition.get(1)), condition.get(3), filteredIndexes);
+                    case ">" ->
+                            MoteurStockage.whereGreaterThan(t.getColumns().get(condition.get(1)), condition.get(3), filteredIndexes);
+                    default -> filteredIndexes;
+                };
+
+            }
+        }
+
+        return  filteredIndexes;
+    }
+
 }

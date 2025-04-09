@@ -1,5 +1,7 @@
 package talkme.table;
 
+import talkme.query.MoteurStockage;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,4 +20,5 @@ public class Database {
     public static void insertInTable(Table t, List<String> columnNames, List<List<Object>> data) throws ColonnesException{
         moteur.insert(t, columnNames, data);
     }
+
 }
