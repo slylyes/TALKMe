@@ -1,6 +1,7 @@
 package talkme.query;
 
 import io.smallrye.openapi.api.models.responses.APIResponseImpl;
+import org.apache.parquet.io.api.Binary;
 import talkme.table.ColonnesException;
 import talkme.table.Column;
 import talkme.table.Table;
@@ -49,7 +50,7 @@ public class MoteurStockage {
         List<Object> values= col.getValues();
 
         for (int i: prevSelected){
-            if (compare(convertType(col.getType(), (String) values.get(i)), convertType(col.getType(),compared)) == 0){
+            if (compare(values.get(i), convertToParquetType(col.getType(),compared))  == 0){
 
                 selectedIndex.add(i);
             }
@@ -64,7 +65,7 @@ public class MoteurStockage {
         List<Object> values = col.getValues();
 
         for (int i : prevSelected) {
-            if (compare(convertType(col.getType(), (String) values.get(i)), convertType(col.getType(),compared)) < 0) {
+            if (compare(values.get(i), convertToParquetType(col.getType(),compared))  < 0) {
                 selectedIndex.add(i);
             }
         }
@@ -79,7 +80,7 @@ public class MoteurStockage {
         List<Object> values = col.getValues();
 
         for (int i : prevSelected) {
-            if (compare(convertType(col.getType(), (String) values.get(i)), convertType(col.getType(),compared)) > 0) {
+            if (compare(values.get(i), convertToParquetType(col.getType(),compared)) > 0) {
                 selectedIndex.add(i);
             }
         }
@@ -87,12 +88,17 @@ public class MoteurStockage {
         return selectedIndex;
     }
 
-    private static Object convertType(String type,String val){
+    private static Object convertToParquetType(String type, String val) {
+        if (val == null) return null;
 
-        return switch (type) {
-            case "INT64" -> Integer.parseInt(val);
-            case "DOUBLE" -> Double.parseDouble(val);
-            default -> val;
+        return switch (type.toUpperCase()) {
+            case "INT32"   -> Integer.parseInt(val);
+            case "INT64"   -> Long.parseLong(val);
+            case "FLOAT"   -> Float.parseFloat(val);
+            case "DOUBLE"  -> Double.parseDouble(val);
+            case "BOOLEAN" -> Boolean.parseBoolean(val);
+            case "BINARY"  -> Binary.fromString(val);
+            default        -> throw new IllegalArgumentException("Unsupported Parquet type: " + type);
         };
     }
 

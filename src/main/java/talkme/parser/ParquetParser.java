@@ -8,12 +8,15 @@ package talkme.parser;
 //getColumnTypes(): return the types of columns as List<String>
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.example.data.Group;
+import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.column.impl.ColumnReadStoreImpl;
+import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.example.DummyRecordConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
-import org.apache.parquet.hadoop.ParquetReader;
-import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.Type;
 
 import java.io.File;
@@ -24,26 +27,24 @@ import talkme.table.Table;
 
 
 public class ParquetParser {
-    private final ParquetReader<Group> reader;
+    private  ParquetFileReader reader;
     private final List<String> columnNames;
     private final List<Type> columnTypes;
-
+    private final MessageType schema;
     private final int limite;
+    private  final Path pth;
+
 
     public ParquetParser(File parquetFile, int limite) throws IOException {
         this.limite = limite;
 
         Path filePath = new Path(parquetFile.toURI().toString());
-        this.reader = ParquetReader.builder(new GroupReadSupport(), filePath).build();
 
         Configuration configuration = new Configuration();
+        reader = ParquetFileReader.open(HadoopInputFile.fromPath(filePath, configuration));
+        schema = reader.getFooter().getFileMetaData().getSchema();
 
-        // Extract schema
-        MessageType schema;
-        try (ParquetFileReader fileReader = ParquetFileReader.open(HadoopInputFile.fromPath(filePath, configuration))) {
-            schema = fileReader.getFileMetaData().getSchema();
-        }
-
+        this.pth=filePath;
         this.columnNames = extractColumnNames(schema);
         this.columnTypes = extractColumnTypes(schema);
     }
@@ -57,55 +58,66 @@ public class ParquetParser {
         return columnTypes;
     }
 
+
+
     public List<List<Object>> getNextBatch() throws IOException {
-        List<List<Object>> batch = new ArrayList<>();
-
-
-        // Initialize column lists (one list per column)
+        List<List<Object>> columns = new ArrayList<>();
         for (int i = 0; i < columnNames.size(); i++) {
-            batch.add(new ArrayList<>());
+            columns.add(new ArrayList<>());
         }
 
-        // Read records and distribute values into column lists
-        for (int i = 0; i < limite; i++) {
-            Group record = reader.read();
-            if (record == null) break; // No more data
+        int numColumns = columnNames.size();
 
-            for (int colIndex = 0; colIndex < columnNames.size(); colIndex++) {
-                try {
-                    batch.get(colIndex).add(record.getValueToString(colIndex, 0)); // Add value to column list
-                } catch (Exception e) {
-                    batch.get(colIndex).add(null); // Handle missing values
+        // Iterate per column
+        for (int colIndex = 0; colIndex < numColumns; colIndex++) {
+            String colName = columnNames.get(colIndex);
+            Type colType = columnTypes.get(colIndex);
+            ColumnDescriptor colDescriptor = schema.getColumnDescription(new String[]{colName});
+            List<Object> columnData = columns.get(colIndex);
+
+            reader.setRequestedSchema(schema);  // fallback, in case you want full schema
+            reader.setRequestedSchema(MessageTypeParser.parseMessageType(schema.toString()));  // optional
+
+            // Reset to beginning for every column
+            reader = ParquetFileReader.open(HadoopInputFile.fromPath(pth, new Configuration()));
+
+            for (PageReadStore rowGroup; (rowGroup = reader.readNextRowGroup()) != null; ) {
+                if (columnData.size() >= limite) break;
+
+                ColumnReadStoreImpl columnReadStore = new ColumnReadStoreImpl(
+                        rowGroup,
+                        new DummyRecordConverter(schema).getRootConverter(),
+                        schema,
+                        null
+                );
+
+                ColumnReader columnReader = columnReadStore.getColumnReader(colDescriptor);
+                long rowsInGroup = rowGroup.getRowCount();
+
+                for (int i = 0; i < rowsInGroup && columnData.size() < limite; i++) {
+                    if (columnReader.getCurrentDefinitionLevel() == colDescriptor.getMaxDefinitionLevel()) {
+                        switch (colDescriptor.getType()) {
+                            case INT32 -> columnData.add(columnReader.getInteger());
+                            case INT64 -> columnData.add(columnReader.getLong());
+                            case DOUBLE -> columnData.add(columnReader.getDouble());
+                            case FLOAT -> columnData.add(columnReader.getFloat());
+                            case BOOLEAN -> columnData.add(columnReader.getBoolean());
+                            case BINARY -> columnData.add(columnReader.getBinary().toStringUsingUTF8());
+                            default -> columnData.add("UnsupportedType");
+                        }
+                    } else {
+                        columnData.add(null);
+                    }
+                    columnReader.consume();
                 }
             }
         }
-        return batch; // Now structured as [column1_values[], column2_values[], ...]
+
+        return columns;
     }
 
-    public List<List<Object>> getDirect(Table T) throws IOException {
-        List<List<Object>> batch = new ArrayList<>();
 
-        // Initialize column lists (one list per column)
-        for (int i = 0; i < columnNames.size(); i++) {
-            batch.add(new ArrayList<>());
-        }
 
-        // Read records and distribute values into column lists
-        for (int i = 0; i < limite; i++) {
-            Group record = reader.read();
-            if (record == null) break; // No more data
-
-            for (int colIndex = 0; colIndex < columnNames.size(); colIndex++) {
-                try {
-                    batch.get(colIndex).add(record.getValueToString(colIndex, 0)); // Add value to column list
-                } catch (Exception e) {
-                    batch.get(colIndex).add(null); // Handle missing values
-                }
-            }
-        }
-        return batch; // Now structured as [column1_values[], column2_values[], ...]
-
-    }
 
     // Extract column names from schema
     private static List<String> extractColumnNames(MessageType schema) {
