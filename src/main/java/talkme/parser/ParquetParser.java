@@ -27,6 +27,7 @@ public class ParquetParser {
     private final ParquetReader<Group> reader;
     private final List<String> columnNames;
     private final List<Type> columnTypes;
+    private final MessageType schema;
 
     private final int limite;
 
@@ -38,8 +39,6 @@ public class ParquetParser {
 
         Configuration configuration = new Configuration();
 
-        // Extract schema
-        MessageType schema;
         try (ParquetFileReader fileReader = ParquetFileReader.open(HadoopInputFile.fromPath(filePath, configuration))) {
             schema = fileReader.getFileMetaData().getSchema();
         }
@@ -48,6 +47,9 @@ public class ParquetParser {
         this.columnTypes = extractColumnTypes(schema);
     }
 
+    public MessageType getSchema() {
+        return schema;
+    }
 
     public List<String> getColumnNames() {
         return columnNames;
