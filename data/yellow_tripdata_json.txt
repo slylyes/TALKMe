@@ -1,0 +1,77 @@
+{
+    "name": "testTable",
+    "columns": {
+        "vendor_name": {
+            "type": "BINARY",
+            "values": []
+        },
+        "Trip_Pickup_DateTime": {
+            "type": "BINARY",
+            "values": []
+        },
+        "Trip_Dropoff_DateTime": {
+            "type": "BINARY",
+            "values": []
+        },
+        "Passenger_Count": {
+            "type": "INT64",
+            "values": []
+        },
+        "Trip_Distance": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "Start_Lon": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "Start_Lat": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "Rate_Code": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "store_and_forward": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "End_Lon": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "End_Lat": {
+            "type": "BINARY",
+            "values": []
+        },
+        "Payment_Type": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "Fare_Amt": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "surcharge": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "mta_tax": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "Tip_Amt": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "Tolls_Amt": {
+            "type": "DOUBLE",
+            "values": []
+        },
+        "Total_Amt": {
+            "type": "DOUBLE",
+            "values": []
+        }
+    }
+}
