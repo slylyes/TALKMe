@@ -1,5 +1,6 @@
 package test.talkme.parser;
 
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -47,11 +48,13 @@ class TestParser {
                 "End_Lon", "End_Lat", "Payment_Type", "Fare_Amt", "surcharge", "mta_tax",
                 "Tip_Amt", "Tolls_Amt", "Total_Amt"
         ));
+
         assertIterableEquals(listTest, parser.getColumnNames());
     }
 
     @Test
     void testTypes() {
+
         // Skip test if setup failed
         assumeTrue(isSetupSuccessful, "Setup failed, skipping test");
         
@@ -65,11 +68,13 @@ class TestParser {
         List<String> actualTypes = parser.getColumnTypes().stream()
                 .map(type -> ((PrimitiveType) type).getPrimitiveTypeName().name())
                 .toList();
+
         assertIterableEquals(expectedTypes, actualTypes);
     }
 
     @Test
     void testBatches() throws IOException {
+
         // Skip test if setup failed
         assumeTrue(isSetupSuccessful, "Setup failed, skipping test");
         
@@ -129,5 +134,6 @@ class TestParser {
         } catch (IOException e) {
             // No error log statement
         }
+
     }
 }

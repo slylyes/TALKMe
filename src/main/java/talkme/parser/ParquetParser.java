@@ -22,10 +22,12 @@ import java.util.*;
 import org.apache.hadoop.fs.Path;
 import talkme.table.Table;
 
+
 public class ParquetParser {
     private final ParquetReader<Group> reader;
     private final List<String> columnNames;
     private final List<Type> columnTypes;
+
     private final int limite;
 
     public ParquetParser(File parquetFile, int limite) throws IOException {
@@ -46,6 +48,7 @@ public class ParquetParser {
         this.columnTypes = extractColumnTypes(schema);
     }
 
+
     public List<String> getColumnNames() {
         return columnNames;
     }
@@ -56,6 +59,7 @@ public class ParquetParser {
 
     public List<List<Object>> getNextBatch() throws IOException {
         List<List<Object>> batch = new ArrayList<>();
+
 
         // Initialize column lists (one list per column)
         for (int i = 0; i < columnNames.size(); i++) {
@@ -100,6 +104,7 @@ public class ParquetParser {
             }
         }
         return batch; // Now structured as [column1_values[], column2_values[], ...]
+
     }
 
     // Extract column names from schema
@@ -124,3 +129,4 @@ public class ParquetParser {
         reader.close();
     }
 }
+
