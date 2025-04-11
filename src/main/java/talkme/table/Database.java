@@ -8,7 +8,7 @@ import java.util.Map;
 
 public class Database {
     public static final Map<String, Table> tableMap = new HashMap<>();
-    private static final MoteurStockage moteur = new MoteurStockage();
+//    private static final MoteurStockage moteur = new MoteurStockage();
 
     public static void add(Table t) throws SameNameException {
         if( tableMap.containsKey(t.getName())){
@@ -18,7 +18,7 @@ public class Database {
     }
 
     public static void insertInTable(Table t, List<String> columnNames, List<List<Object>> data) throws ColonnesException{
-        moteur.insert(t, columnNames, data);
+        MoteurStockage.insert(t, columnNames, data);
     }
 
 }
