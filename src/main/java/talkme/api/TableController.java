@@ -94,7 +94,7 @@ public class TableController {
                     entity(new StatusMessage("Les colonnes des données ne correspondent pas avec celles de la table"+e.getMessage())).build();
         }
 
-        return Response.status(Response.Status.OK).entity(new StatusMessage("File uploaded and processed successfully")).build();
+        return Response.status(Response.Status.OK).entity(new StatusMessage("File uploaded and processed successfully\n"+limite+" lines were loaded")).build();
     }
 
 }

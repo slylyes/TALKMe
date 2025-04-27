@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public class Column {
+    private String name;
     private String type;
     private List<Object> values;
 
@@ -24,6 +25,7 @@ public class Column {
         return ((type.equals(ot.getType())) && (values.equals(ot.getValues())));
     }
 
+    public String getName(){ return name;}
     public String getType(){ return type; }
     public List<Object> getValues() {
         return values;
