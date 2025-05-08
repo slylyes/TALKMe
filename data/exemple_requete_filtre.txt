@@ -1,0 +1,16 @@
+{
+    "name": "taxi",
+    "columns": [
+        "vendor_name",
+        "Passenger_Count",
+        "surcharge",
+        "Tip_Amt"
+    ],
+    "filters": [
+        ["vendor_name","=","CMT"], 
+        ["Passenger_Count","!=","2"],
+        ["surcharge","=","0.0"],
+        ["Tip_Amt","=","0.0"]
+    ],
+    "groupBy": true
+}

@@ -1,11 +1,13 @@
 package talkme.query;
 
+import org.apache.parquet.io.api.Binary;
 import io.smallrye.openapi.api.models.responses.APIResponseImpl;
 import org.apache.parquet.io.api.Binary;
 import talkme.table.ColonnesException;
 import talkme.table.Column;
 import talkme.table.Table;
 
+import java.util.Comparator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +32,7 @@ public class MoteurStockage {
 
     public static List<List<Object>> select(Table t, List<String> cols, List<Integer> index) {
 
+
         List<List<Object>> result = new ArrayList<>();
 
         for (Integer i : index) {
@@ -43,6 +46,28 @@ public class MoteurStockage {
         return result;
     }
 
+    public static List<List<Object>> groupBy(List<List<Object>> selectValues, List<String> cols) {
+
+        int nbCol = cols.size();
+        Comparator<List<Object>> comparator = new Comparator<List<Object>>() {
+            @Override
+            public int compare(List<Object> a, List<Object> b) {
+                for (int i = 0; i < nbCol; i++) {
+                    Comparable v1 = (Comparable) a.get(i);
+                    Comparable v2 = (Comparable) b.get(i);
+                    int result = v1.compareTo(v2);
+                    if (result != 0) {
+                        return result;
+                    }
+                }
+                return 0;
+            }
+        };
+
+        selectValues.sort(comparator);
+        return selectValues;
+    }
+
 
     public static  List<Integer> whereEquals(Column col, String compared, List<Integer> prevSelected){
 
@@ -51,6 +76,20 @@ public class MoteurStockage {
 
         for (int i: prevSelected){
             if (compare(values.get(i), convertToParquetType(col.getType(),compared))  == 0){
+
+                selectedIndex.add(i);
+            }
+        }
+        return selectedIndex;
+    }
+
+    public static  List<Integer> whereDifferent(Column col, String compared, List<Integer> prevSelected){
+
+        List<Integer> selectedIndex= new ArrayList<>();
+        List<Object> values= col.getValues();
+
+        for (int i: prevSelected){
+            if (compare(values.get(i), convertToParquetType(col.getType(),compared))  != 0){
 
                 selectedIndex.add(i);
             }
@@ -88,6 +127,10 @@ public class MoteurStockage {
         return selectedIndex;
     }
 
+
+
+
+
     private static Object convertToParquetType(String type, String val) {
         if (val == null) return null;
 
@@ -102,12 +145,27 @@ public class MoteurStockage {
         };
     }
 
-    // Utility method for comparison
     @SuppressWarnings("unchecked")
-    private static  int compare(Object a, Object b) {
+    private static int compare(Object a, Object b) {
+        // Si les deux objets sont Binary, comparer leur contenu UTF-8
+        if (a instanceof Binary && b instanceof Binary) {
+            return ((Binary) a).toStringUsingUTF8().compareTo(((Binary) b).toStringUsingUTF8());
+        }
+
+        // Si un des deux est Binary, transformer en String pour comparaison
+        if (a instanceof Binary && b instanceof String) {
+            return ((Binary) a).toStringUsingUTF8().compareTo((String) b);
+        }
+        if (a instanceof String && b instanceof Binary) {
+            return ((String) a).compareTo(((Binary) b).toStringUsingUTF8());
+        }
+
+        // Cas générique
         if (a instanceof Comparable && b instanceof Comparable) {
             return ((Comparable<Object>) a).compareTo(b);
         }
+
         throw new IllegalArgumentException("Objects are not comparable");
     }
+
 }

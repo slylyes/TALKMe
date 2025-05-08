@@ -19,68 +19,60 @@ public class QueryController {
 
     //List<List<Object>> data = parquetReader.getNextBatch();
 
-    private List<List<Object>> data = new ArrayList<>();
-
-    public QueryController() {
-        List<Object> names = new ArrayList<>(Arrays.asList("Alice", "Bob", "Charlie", "David"));
-        List<Object> ages = new ArrayList<>(Arrays.asList(25, 30, 28, 35));
-        data.add(names);
-        data.add(ages);
-    }
-
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public List<List<Object>> select(@QueryParam("colonnes") String colonnes) {
-        if (colonnes == null) {
-            return data; // On return toutes les données si aucune colonne spécifiée
-        }
-
-        List<List<Object>> res = new ArrayList<>();
-        List<String> col_spec = List.of(colonnes.split(","));
-        for(String col: col_spec){
-            if(Objects.equals(col, "name")){
-                res.add(data.get(0));
-            } else if (Objects.equals(col, "age")) {
-                res.add(data.get(1));
-            }
-        }
-        return res;
-
-    }
+    private List<Map<String, Object>> dataMap = new ArrayList<>();
 
     @GET
     @Path("/filter")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<List<Object>> filter(
+    public List<Map<String, Object>> filter(
             @RequestBody Query query
-            ){
-        List<Integer> filteredIndexes = handleConditions(query);
-        data=  MoteurStockage.select(query.getTable(),query.getColumns(), filteredIndexes);
+    ){
 
-        return data;
+        List<Integer> filteredIndexes = new ArrayList<>();
+
+        filteredIndexes = handleConditions(query);
+
+        List<List<Object>> data=  MoteurStockage.select(query.getTable(),query.getColumns(), filteredIndexes);
+
+        if (query.groupByActivated()){
+            data = MoteurStockage.groupBy(data, query.getColumns());
+        }
+
+        dataMap = new ArrayList<>();
+
+        for (List<Object> ligne : data) {
+            Map<String, Object> map = new HashMap<>();
+            for (int i = 0; i < query.getColumns().size(); i++) {
+                map.put(query.getColumns().get(i), ligne.get(i));
+            }
+            dataMap.add(map);
+        }
+
+        return dataMap;
     }
 
     private List<Integer> handleConditions(Query query){
         int nbRows = query.getTable().getColumns().get(query.getColumns().get(0)).getValues().size();
         List<Integer> filteredIndexes= IntStream.range(0, nbRows).boxed().toList();
+
         Table t= query.getTable();
+        int nbFilter =  query.getFilters().size();
 
         for (List<String> condition: query.getFilters()){
 
-            if (condition.get(0).equals("and")) {
-                filteredIndexes = switch (condition.get(2)) {
-                    case "=" ->
-                            MoteurStockage.whereEquals(t.getColumns().get(condition.get(1)), condition.get(3), filteredIndexes);
-                    case "<" ->
-                            MoteurStockage.whereLessThan(t.getColumns().get(condition.get(1)), condition.get(3), filteredIndexes);
-                    case ">" ->
-                            MoteurStockage.whereGreaterThan(t.getColumns().get(condition.get(1)), condition.get(3), filteredIndexes);
-                    default -> filteredIndexes;
-                };
+            filteredIndexes = switch (condition.get(1)) {
+                case "=" ->
+                        MoteurStockage.whereEquals(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                case "<" ->
+                        MoteurStockage.whereLessThan(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                case ">" ->
+                        MoteurStockage.whereGreaterThan(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                case "!=" ->
+                        MoteurStockage.whereDifferent(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                default -> filteredIndexes;
+            };
 
-            }
         }
-
         return  filteredIndexes;
     }
 

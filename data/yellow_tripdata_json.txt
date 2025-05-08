@@ -46,7 +46,7 @@
             "values": []
         },
         "Payment_Type": {
-            "type": "DOUBLE",
+            "type": "BINARY",
             "values": []
         },
         "Fare_Amt": {
