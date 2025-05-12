@@ -12,11 +12,11 @@ public class Query {
     private final Table t;
     private final List<String> columns;
     private final List<List<String>> filters;
-    private final Boolean groupBy;
+    private final List<String>  groupBy;
 
     @JsonCreator
     public Query(@JsonProperty("name") String name,@JsonProperty("columns")  List<String> columns,
-                 @JsonProperty("filters")  List<List<String>> filters, @JsonProperty("groupBy")  Boolean groupBy ) {
+                 @JsonProperty("filters")  List<List<String>> filters, @JsonProperty("groupBy")  List<String>  groupBy ) {
 
         if (!tableMap.containsKey(name)) {
             throw new IllegalArgumentException() ;
@@ -45,7 +45,11 @@ public class Query {
         return filters;
     }
 
-    public Boolean groupByActivated(){
+    public List<String> getGroupBy() {
         return groupBy;
+    }
+
+    public Boolean groupByActivated(){
+        return !groupBy.isEmpty();
     }
 }

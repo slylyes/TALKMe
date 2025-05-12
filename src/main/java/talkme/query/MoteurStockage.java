@@ -46,13 +46,13 @@ public class MoteurStockage {
         return result;
     }
 
-    public static List<List<Object>> groupBy(List<List<Object>> selectValues, List<String> cols) {
+    public static List<List<Object>> groupBy(List<List<Object>> selectValues, List<Integer> idxCols) {
 
-        int nbCol = cols.size();
+
         Comparator<List<Object>> comparator = new Comparator<List<Object>>() {
             @Override
             public int compare(List<Object> a, List<Object> b) {
-                for (int i = 0; i < nbCol; i++) {
+                for (Integer i : idxCols) {
                     Comparable v1 = (Comparable) a.get(i);
                     Comparable v2 = (Comparable) b.get(i);
                     int result = v1.compareTo(v2);

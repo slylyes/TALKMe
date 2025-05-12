@@ -35,7 +35,21 @@ public class QueryController {
         List<List<Object>> data=  MoteurStockage.select(query.getTable(),query.getColumns(), filteredIndexes);
 
         if (query.groupByActivated()){
-            data = MoteurStockage.groupBy(data, query.getColumns());
+            List<String> columns = query.getColumns();
+            List<String> groupBy = query.getGroupBy();
+            List<Integer> idxCols = new ArrayList<>();
+
+            Boolean valid = true;
+            for (String col : groupBy) {
+                if (columns.contains(col)) {
+                    idxCols.add(columns.indexOf(col));
+                }else{
+                    valid = false;
+                }
+            }
+            if (valid) {
+                data = MoteurStockage.groupBy(data, idxCols);
+            }
         }
 
         dataMap = new ArrayList<>();
