@@ -52,9 +52,9 @@ public class MoteurStockage {
         Comparator<List<Object>> comparator = new Comparator<List<Object>>() {
             @Override
             public int compare(List<Object> a, List<Object> b) {
-                for (Integer i : idxCols) {
-                    Comparable v1 = (Comparable) a.get(i);
-                    Comparable v2 = (Comparable) b.get(i);
+                for (Integer idx : idxCols) {
+                    Comparable v1 = (Comparable) a.get(idx);
+                    Comparable v2 = (Comparable) b.get(idx);
                     int result = v1.compareTo(v2);
                     if (result != 0) {
                         return result;

@@ -35,14 +35,14 @@ public class QueryController {
         List<List<Object>> data=  MoteurStockage.select(query.getTable(),query.getColumns(), filteredIndexes);
 
         if (query.groupByActivated()){
-            List<String> columns = query.getColumns();
+            List<String> cols = query.getColumns();
             List<String> groupBy = query.getGroupBy();
             List<Integer> idxCols = new ArrayList<>();
 
             Boolean valid = true;
             for (String col : groupBy) {
-                if (columns.contains(col)) {
-                    idxCols.add(columns.indexOf(col));
+                if (cols.contains(col)) {
+                    idxCols.add(cols.indexOf(col));
                 }else{
                     valid = false;
                 }

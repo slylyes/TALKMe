@@ -23,7 +23,7 @@ public class Query {
         }
         this.t = tableMap.get(name);
 
-        if (columns.size() == 0){
+        if (columns.isEmpty()){
             columns=tableMap.get(name).getColumnNames();
         }
         this.columns=columns;

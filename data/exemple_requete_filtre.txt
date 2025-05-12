@@ -7,7 +7,7 @@
         "Tip_Amt"
     ],
     "filters": [
-        ["vendor_name","=","DDS"],
+        ["vendor_name","!=","CMT"],
         ["Passenger_Count","!=","2"],
         ["surcharge","=","0.0"],
         ["Tip_Amt","=","0.0"]
