@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import org.apache.hadoop.fs.Path;
-import talkme.table.Table;
 
 
 public class ParquetParser {
@@ -31,12 +30,12 @@ public class ParquetParser {
     private final List<String> columnNames;
     private final List<Type> columnTypes;
     private final MessageType schema;
-    private final int limite;
-    private  final Path pth;
+    private final int limit;
+    private  final Path path;
 
 
-    public ParquetParser(File parquetFile, int limite) throws IOException {
-        this.limite = limite;
+    public ParquetParser(File parquetFile, int limit) throws IOException {
+        this.limit = limit;
 
         Path filePath = new Path(parquetFile.toURI().toString());
 
@@ -44,7 +43,7 @@ public class ParquetParser {
         reader = ParquetFileReader.open(HadoopInputFile.fromPath(filePath, configuration));
         schema = reader.getFooter().getFileMetaData().getSchema();
 
-        this.pth=filePath;
+        this.path =filePath;
         this.columnNames = extractColumnNames(schema);
         this.columnTypes = extractColumnTypes(schema);
     }
@@ -79,10 +78,10 @@ public class ParquetParser {
             reader.setRequestedSchema(MessageTypeParser.parseMessageType(schema.toString()));  // optional
 
             // Reset to beginning for every column
-            reader = ParquetFileReader.open(HadoopInputFile.fromPath(pth, new Configuration()));
+            reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()));
 
             for (PageReadStore rowGroup; (rowGroup = reader.readNextRowGroup()) != null; ) {
-                if (columnData.size() >= limite) break;
+                if (columnData.size() >= limit) break;
 
                 ColumnReadStoreImpl columnReadStore = new ColumnReadStoreImpl(
                         rowGroup,
@@ -94,7 +93,7 @@ public class ParquetParser {
                 ColumnReader columnReader = columnReadStore.getColumnReader(colDescriptor);
                 long rowsInGroup = rowGroup.getRowCount();
 
-                for (int i = 0; i < rowsInGroup && columnData.size() < limite; i++) {
+                for (int i = 0; i < rowsInGroup && columnData.size() < limit; i++) {
                     if (columnReader.getCurrentDefinitionLevel() == colDescriptor.getMaxDefinitionLevel()) {
                         switch (colDescriptor.getType()) {
                             case INT32 -> columnData.add(columnReader.getInteger());

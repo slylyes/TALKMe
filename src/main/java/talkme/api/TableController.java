@@ -71,7 +71,7 @@ public class TableController {
     @Consumes(MediaType.APPLICATION_OCTET_STREAM)
     public Response uploadFile(
             @QueryParam("tableName") String tableName,
-            @QueryParam("limite") int limite,
+            @QueryParam("limit") int limit,
             File parquetFile) {
 
         // Validate table existence
@@ -83,7 +83,7 @@ public class TableController {
         Table table = tableMap.get(tableName);
 
         try {
-            ParquetParser parser = new ParquetParser(parquetFile, limite);
+            ParquetParser parser = new ParquetParser(parquetFile, limit);
             Database.insertInTable(table, parser.getColumnNames(), parser.getNextBatch());
             parser.close();
         } catch (IOException e) {
@@ -94,7 +94,7 @@ public class TableController {
                     entity(new StatusMessage("Les colonnes des données ne correspondent pas avec celles de la table"+e.getMessage())).build();
         }
 
-        return Response.status(Response.Status.OK).entity(new StatusMessage("File uploaded and processed successfully\n"+limite+" lines were loaded")).build();
+        return Response.status(Response.Status.OK).entity(new StatusMessage("File uploaded and processed successfully\n"+limit+" lines were loaded")).build();
     }
 
 }
