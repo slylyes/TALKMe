@@ -17,8 +17,9 @@ public class Database {
         tableMap.put(t.getName(), t);
     }
 
+    /*
     public static void insertInTable(Table t, List<String> columnNames, List<List<Object>> data) throws ColonnesException{
         MoteurStockage.insert(t, columnNames, data);
     }
-
+    */
 }

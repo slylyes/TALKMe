@@ -27,13 +27,13 @@ import static talkme.table.Database.tableMap;
 @Produces(MediaType.APPLICATION_JSON)
 public class TableController {
     /*
-    * Création d'une table vide
-    * Paramètres:
-    *   name: nom de la table
-    *   columns: colonnes de la table séparées par des virgules
-    * Préconditions:
-    *   Une table de même nom ne doit pas exister
-    * Retourne un Response indiquant si la table a été créée ou si elle existe déjà
+     * Création d'une table vide
+     * Paramètres:
+     *   name: nom de la table
+     *   columns: colonnes de la table séparées par des virgules
+     * Préconditions:
+     *   Une table de même nom ne doit pas exister
+     * Retourne un Response indiquant si la table a été créée ou si elle existe déjà
      */
     @POST
     @Path("/table")
@@ -56,15 +56,15 @@ public class TableController {
     }
 
     /*
-    * Remplissage d'une table
-    * Arguments:
-    *   table: nom de la table à remplir
-    *   fileName: nom du fichier à partir duquel récupérer les données à mettre dans la table
-    *   offset: offset de lecture du fichier
-    * Préconditions:
-    *   La table doit déjà exister
-    *   Le fichier doit exister
-    * Retourne un Response indiquant si la table a pu être remplie ou pas
+     * Remplissage d'une table
+     * Arguments:
+     *   table: nom de la table à remplir
+     *   fileName: nom du fichier à partir duquel récupérer les données à mettre dans la table
+     *   offset: offset de lecture du fichier
+     * Préconditions:
+     *   La table doit déjà exister
+     *   Le fichier doit exister
+     * Retourne un Response indiquant si la table a pu être remplie ou pas
      */
     @POST
     @Path("/upload")
@@ -83,8 +83,10 @@ public class TableController {
         Table table = tableMap.get(tableName);
 
         try {
-            ParquetParser parser = new ParquetParser(parquetFile, limit);
-            Database.insertInTable(table, parser.getColumnNames(), parser.getNextBatch());
+
+            ParquetParser parser = new ParquetParser(parquetFile, limite);
+            table.getMoteurStockage().insert(parser.getColumnNames(), parser.getNextBatch());
+
             parser.close();
         } catch (IOException e) {
             return Response.status(Response.Status.BAD_REQUEST).

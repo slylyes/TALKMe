@@ -30,8 +30,10 @@ public class ParquetParser {
     private final List<String> columnNames;
     private final List<Type> columnTypes;
     private final MessageType schema;
+
     private final int limit;
     private  final Path path;
+
 
 
     public ParquetParser(File parquetFile, int limit) throws IOException {
@@ -44,6 +46,7 @@ public class ParquetParser {
         schema = reader.getFooter().getFileMetaData().getSchema();
 
         this.path =filePath;
+
         this.columnNames = extractColumnNames(schema);
         this.columnTypes = extractColumnTypes(schema);
     }
@@ -56,6 +59,7 @@ public class ParquetParser {
     public List<Type> getColumnTypes() {
         return columnTypes;
     }
+
 
 
 
@@ -114,7 +118,6 @@ public class ParquetParser {
 
         return columns;
     }
-
 
 
 

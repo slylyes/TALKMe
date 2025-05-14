@@ -17,41 +17,54 @@ import java.util.stream.IntStream;
 @Path("/data")
 public class QueryController {
 
-    private List<List<Object>> data = new ArrayList<>();
+
+    //List<List<Object>> data = parquetReader.getNextBatch();
+
+    private List<Map<String, Object>> dataMap = new ArrayList<>();
+
 
     @GET
     @Path("/filter")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<List<Object>> filter(
-            @RequestBody Query query
-            ){
-        List<Integer> filteredIndexes = handleConditions(query);
-        data=  MoteurStockage.select(query.getTable(),query.getColumns(), filteredIndexes);
 
-        return data;
+    public List<Map<String, Object>> filter(
+            @RequestBody Query query
+    ){
+
+        List<Integer> filteredIndexes = new ArrayList<>();
+
+        MoteurStockage moteurStockage = query.getTable().getMoteurStockage();
+
+        filteredIndexes = handleConditions(query, moteurStockage);
+
+        dataMap =  moteurStockage.select(filteredIndexes, query.getColumns(),query.getGroupBy(), query.getAggregates());
+
+
+        return dataMap;
     }
 
-    private List<Integer> handleConditions(Query query){
+    private List<Integer> handleConditions(Query query, MoteurStockage moteurStockage){
         int nbRows = query.getTable().getColumns().get(query.getColumns().get(0)).getValues().size();
         List<Integer> filteredIndexes= IntStream.range(0, nbRows).boxed().toList();
+
         Table t= query.getTable();
+        int nbFilter =  query.getFilters().size();
 
         for (List<String> condition: query.getFilters()){
 
-            if (condition.get(0).equals("and")) {
-                filteredIndexes = switch (condition.get(2)) {
-                    case "=" ->
-                            MoteurStockage.whereEquals(t.getColumns().get(condition.get(1)), condition.get(3), filteredIndexes);
-                    case "<" ->
-                            MoteurStockage.whereLessThan(t.getColumns().get(condition.get(1)), condition.get(3), filteredIndexes);
-                    case ">" ->
-                            MoteurStockage.whereGreaterThan(t.getColumns().get(condition.get(1)), condition.get(3), filteredIndexes);
-                    default -> filteredIndexes;
-                };
+            filteredIndexes = switch (condition.get(1)) {
+                case "=" ->
+                        moteurStockage.whereEquals(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                case "<" ->
+                        moteurStockage.whereLessThan(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                case ">" ->
+                        moteurStockage.whereGreaterThan(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                case "!=" ->
+                        moteurStockage.whereDifferent(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                default -> filteredIndexes;
+            };
 
-            }
         }
-
         return  filteredIndexes;
     }
 
