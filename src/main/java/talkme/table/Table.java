@@ -6,15 +6,17 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Table {
     private final String name;
     private final Map<String, Column> columns;
 
     @JsonCreator
-    public Table(@JsonProperty("name") String name, @JsonProperty("columns") Map<String, Column> columns) {
+    public Table(@JsonProperty("name") String name, @JsonProperty("columns") List<Column> columns) {
         this.name = name;
-        this.columns = columns;
+        this.columns = columns.stream()
+                .collect(Collectors.toMap(Column::getName, column -> column));
     }
 
     public String getName() {
@@ -25,8 +27,14 @@ public class Table {
     public List<String> getColumnNames(){
         return List.copyOf(columns.keySet());
     }
+    @JsonIgnore
     public Map<String, Column> getColumns() {
         return columns;
+    }
+
+    @JsonProperty("columns")
+    public List<Column> getColumnsforSerialization() {
+        return List.copyOf(columns.values());
     }
 
     @Override
