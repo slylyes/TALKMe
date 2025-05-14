@@ -84,7 +84,7 @@ public class TableController {
 
         try {
 
-            ParquetParser parser = new ParquetParser(parquetFile, limite);
+            ParquetParser parser = new ParquetParser(parquetFile, limit);
             table.getMoteurStockage().insert(parser.getColumnNames(), parser.getNextBatch());
 
             parser.close();
@@ -131,7 +131,7 @@ public class TableController {
                 rowCount = data.get(0).size();
             }
             
-            Database.insertInTable(table, columns, data);
+            table.getMoteurStockage().insert(columns, data);
             
             return Response.status(Response.Status.OK)
                     .entity(new StatusMessage("Successfully inserted " + rowCount + " rows into table " + tableName))
