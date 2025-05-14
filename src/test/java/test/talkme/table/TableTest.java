@@ -20,8 +20,8 @@ class TableTest {
     void setup() {
         // Create a map of columns for the table
         Map<String, Column> columns = new HashMap<>();
-        columns.put("col1", new Column("STRING", new ArrayList<>()));
-        columns.put("col2", new Column("INTEGER", new ArrayList<>()));
+        columns.put("col1", new Column("col1", "STRING", new ArrayList<>()));
+        columns.put("col2", new Column("col2", "INTEGER", new ArrayList<>()));
         
         // Create the table with name and columns
         table = new Table("TestTable", columns);
@@ -84,10 +84,10 @@ class TableTest {
 
     @Test
     void testColumnEquality() {
-        Column col1 = new Column("STRING", Arrays.asList("A", "B"));
-        Column col2 = new Column("STRING", Arrays.asList("A", "B"));
-        Column col3 = new Column("INTEGER", Arrays.asList("A", "B"));
-        Column col4 = new Column("STRING", Arrays.asList(1, 2));
+        Column col1 = new Column("col1", "STRING", Arrays.asList("A", "B"));
+        Column col2 = new Column("col2", "STRING", Arrays.asList("A", "B"));
+        Column col3 = new Column("col3", "INTEGER", Arrays.asList("A", "B"));
+        Column col4 = new Column("col4", "STRING", Arrays.asList(1, 2));
         
         assertTrue(col1.equals(col2), "Columns with same type and values should be equal");
         assertFalse(col1.equals(col3), "Columns with different types should not be equal");

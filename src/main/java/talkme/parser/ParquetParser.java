@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import org.apache.hadoop.fs.Path;
-import talkme.table.Table;
 
 
 public class ParquetParser {
@@ -31,12 +30,14 @@ public class ParquetParser {
     private final List<String> columnNames;
     private final List<Type> columnTypes;
     private final MessageType schema;
-    private final int limite;
-    private  final Path pth;
+
+    private final int limit;
+    private  final Path path;
 
 
-    public ParquetParser(File parquetFile, int limite) throws IOException {
-        this.limite = limite;
+
+    public ParquetParser(File parquetFile, int limit) throws IOException {
+        this.limit = limit;
 
         Path filePath = new Path(parquetFile.toURI().toString());
 
@@ -44,7 +45,8 @@ public class ParquetParser {
         reader = ParquetFileReader.open(HadoopInputFile.fromPath(filePath, configuration));
         schema = reader.getFooter().getFileMetaData().getSchema();
 
-        this.pth=filePath;
+        this.path =filePath;
+
         this.columnNames = extractColumnNames(schema);
         this.columnTypes = extractColumnTypes(schema);
     }
@@ -60,117 +62,62 @@ public class ParquetParser {
 
 
 
-//    public List<List<Object>> getNextBatch() throws IOException {
-//        List<List<Object>> columns = new ArrayList<>();
-//        for (int i = 0; i < columnNames.size(); i++) {
-//            columns.add(new ArrayList<>());
-//        }
-//
-//        int numColumns = columnNames.size();
-//
-//        // Iterate per column
-//        for (int colIndex = 0; colIndex < numColumns; colIndex++) {
-//            String colName = columnNames.get(colIndex);
-//            Type colType = columnTypes.get(colIndex);
-//            ColumnDescriptor colDescriptor = schema.getColumnDescription(new String[]{colName});
-//            List<Object> columnData = columns.get(colIndex);
-//
-//            reader.setRequestedSchema(schema);  // fallback, in case you want full schema
-//            reader.setRequestedSchema(MessageTypeParser.parseMessageType(schema.toString()));  // optional
-//
-//            // Reset to beginning for every column
-//            reader = ParquetFileReader.open(HadoopInputFile.fromPath(pth, new Configuration()));
-//
-//            for (PageReadStore rowGroup; (rowGroup = reader.readNextRowGroup()) != null; ) {
-//                if (columnData.size() >= limite) break;
-//
-//                ColumnReadStoreImpl columnReadStore = new ColumnReadStoreImpl(
-//                        rowGroup,
-//                        new DummyRecordConverter(schema).getRootConverter(),
-//                        schema,
-//                        null
-//                );
-//
-//                ColumnReader columnReader = columnReadStore.getColumnReader(colDescriptor);
-//                long rowsInGroup = rowGroup.getRowCount();
-//
-//                for (int i = 0; i < rowsInGroup && columnData.size() < limite; i++) {
-//                    if (columnReader.getCurrentDefinitionLevel() == colDescriptor.getMaxDefinitionLevel()) {
-//                        switch (colDescriptor.getType()) {
-//                            case INT32 -> columnData.add(columnReader.getInteger());
-//                            case INT64 -> columnData.add(columnReader.getLong());
-//                            case DOUBLE -> columnData.add(columnReader.getDouble());
-//                            case FLOAT -> columnData.add(columnReader.getFloat());
-//                            case BOOLEAN -> columnData.add(columnReader.getBoolean());
-//                            case BINARY -> columnData.add(columnReader.getBinary().toStringUsingUTF8());
-//                            default -> columnData.add("UnsupportedType");
-//                        }
-//                    } else {
-//                        columnData.add(null);
-//                    }
-//                    columnReader.consume();
-//                }
-//            }
-//        }
-//
-//        return columns;
-//    }
-
 
     public List<List<Object>> getNextBatch() throws IOException {
-        List<List<Object>> batch = new ArrayList<>();
-
+        List<List<Object>> columns = new ArrayList<>();
         for (int i = 0; i < columnNames.size(); i++) {
-            batch.add(new ArrayList<>());
+            columns.add(new ArrayList<>());
         }
 
-        int rowsRead = 0;
+        int numColumns = columnNames.size();
 
-        // Read the file once
-        for (PageReadStore rowGroup; (rowGroup = reader.readNextRowGroup()) != null && rowsRead < limite; ) {
-            ColumnReadStoreImpl columnReadStore = new ColumnReadStoreImpl(
-                    rowGroup,
-                    new DummyRecordConverter(schema).getRootConverter(),
-                    schema,
-                    null
-            );
+        // Iterate per column
+        for (int colIndex = 0; colIndex < numColumns; colIndex++) {
+            String colName = columnNames.get(colIndex);
+            Type colType = columnTypes.get(colIndex);
+            ColumnDescriptor colDescriptor = schema.getColumnDescription(new String[]{colName});
+            List<Object> columnData = columns.get(colIndex);
 
-            List<ColumnReader> columnReaders = new ArrayList<>();
-            for (String colName : columnNames) {
-                ColumnDescriptor descriptor = schema.getColumnDescription(new String[]{colName});
-                columnReaders.add(columnReadStore.getColumnReader(descriptor));
-            }
+            reader.setRequestedSchema(schema);  // fallback, in case you want full schema
+            reader.setRequestedSchema(MessageTypeParser.parseMessageType(schema.toString()));  // optional
 
-            long rowsInGroup = rowGroup.getRowCount();
+            // Reset to beginning for every column
+            reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()));
 
-            for (int i = 0; i < rowsInGroup && rowsRead < limite; i++) {
-                for (int colIndex = 0; colIndex < columnReaders.size(); colIndex++) {
-                    ColumnReader reader = columnReaders.get(colIndex);
-                    ColumnDescriptor descriptor = schema.getColumnDescription(new String[]{columnNames.get(colIndex)});
+            for (PageReadStore rowGroup; (rowGroup = reader.readNextRowGroup()) != null; ) {
+                if (columnData.size() >= limit) break;
 
-                    if (reader.getCurrentDefinitionLevel() == descriptor.getMaxDefinitionLevel()) {
-                        switch (descriptor.getType()) {
-                            case INT32 -> batch.get(colIndex).add(reader.getInteger());
-                            case INT64 -> batch.get(colIndex).add(reader.getLong());
-                            case FLOAT -> batch.get(colIndex).add(reader.getFloat());
-                            case DOUBLE -> batch.get(colIndex).add(reader.getDouble());
-                            case BOOLEAN -> batch.get(colIndex).add(reader.getBoolean());
-                            case BINARY -> batch.get(colIndex).add(reader.getBinary().toStringUsingUTF8());
-                            default -> batch.get(colIndex).add("UnsupportedType");
+                ColumnReadStoreImpl columnReadStore = new ColumnReadStoreImpl(
+                        rowGroup,
+                        new DummyRecordConverter(schema).getRootConverter(),
+                        schema,
+                        null
+                );
+
+                ColumnReader columnReader = columnReadStore.getColumnReader(colDescriptor);
+                long rowsInGroup = rowGroup.getRowCount();
+
+                for (int i = 0; i < rowsInGroup && columnData.size() < limit; i++) {
+                    if (columnReader.getCurrentDefinitionLevel() == colDescriptor.getMaxDefinitionLevel()) {
+                        switch (colDescriptor.getType()) {
+                            case INT32 -> columnData.add(columnReader.getInteger());
+                            case INT64 -> columnData.add(columnReader.getLong());
+                            case DOUBLE -> columnData.add(columnReader.getDouble());
+                            case FLOAT -> columnData.add(columnReader.getFloat());
+                            case BOOLEAN -> columnData.add(columnReader.getBoolean());
+                            case BINARY -> columnData.add(columnReader.getBinary().toStringUsingUTF8());
+                            default -> columnData.add("UnsupportedType");
                         }
                     } else {
-                        batch.get(colIndex).add(null);
+                        columnData.add(null);
                     }
-                    reader.consume();
+                    columnReader.consume();
                 }
-                rowsRead++;
             }
         }
 
-        return batch;
+        return columns;
     }
-
-
 
 
 

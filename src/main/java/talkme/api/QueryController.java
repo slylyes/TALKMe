@@ -17,13 +17,16 @@ import java.util.stream.IntStream;
 @Path("/data")
 public class QueryController {
 
+
     //List<List<Object>> data = parquetReader.getNextBatch();
 
     private List<Map<String, Object>> dataMap = new ArrayList<>();
 
+
     @GET
     @Path("/filter")
     @Produces(MediaType.APPLICATION_JSON)
+
     public List<Map<String, Object>> filter(
             @RequestBody Query query
     ){
@@ -35,6 +38,7 @@ public class QueryController {
         filteredIndexes = handleConditions(query, moteurStockage);
 
         dataMap =  moteurStockage.select(filteredIndexes, query.getColumns(),query.getGroupBy(), query.getAggregates());
+
 
         return dataMap;
     }

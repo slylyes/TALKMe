@@ -1,5 +1,8 @@
 package talkme.query;
 
+
+import io.smallrye.openapi.api.models.responses.APIResponseImpl;
+
 import org.apache.parquet.io.api.Binary;
 import talkme.table.ColonnesException;
 import talkme.table.Column;
@@ -195,7 +198,9 @@ public class MoteurStockage {
         List<Object> values= col.getValues();
 
         for (int i: prevSelected){
+
             if (compare(values.get(i), convertToParquetType(col.getType(),compared))  != 0){
+
 
                 selectedIndex.add(i);
             }
@@ -234,10 +239,8 @@ public class MoteurStockage {
     }
 
 
-
-
-
     private Object convertToParquetType(String type, String val) {
+
         if (val == null) return null;
 
         return switch (type.toUpperCase()) {
