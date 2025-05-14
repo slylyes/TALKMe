@@ -18,7 +18,6 @@ public class MoteurStockage {
         //Vérification de la structure donnée par l'utilisateur
         for (String col: cols){
             if (!table.getColumns().containsKey(col)){
-                System.out.println(cols.toString());
                 throw new ColonnesException(cols);
             }
         }
@@ -90,7 +89,6 @@ public class MoteurStockage {
                }
                listIdx.add(i);
                mapAggregation.put(rowGroupBy, listIdx);
-               System.out.println(mapAggregation);
            }
        }
 
