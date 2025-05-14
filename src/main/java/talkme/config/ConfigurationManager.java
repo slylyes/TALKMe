@@ -39,10 +39,12 @@ public class ConfigurationManager {
             for (int i = 1; i <= nodeCount; i++) {
                 String ip = properties.getProperty("distributed.node." + i + ".ip");
                 int port = Integer.parseInt(properties.getProperty("distributed.node." + i + ".port", "8080"));
-                nodes.add(new NodeConfig(i, ip, port));
+                NodeConfig nodeConfig = new NodeConfig(i, ip, port);
+                nodes.add(nodeConfig);
+                System.out.println("Node loaded from properties: " + nodeConfig);
             }
         } catch (IOException e) {
-            System.err.println("Error loading application.properties: " + e.getMessage());
+            throw new RuntimeException("Failed to load properties", e);
         }
     }
 
@@ -90,6 +92,15 @@ public class ConfigurationManager {
 
         public String getUrl() {
             return "http://" + ip + ":" + port;
+        }
+
+        @Override
+        public String toString() {
+            return "NodeConfig{" +
+                    "id=" + id +
+                    ", ip='" + ip + '\'' +
+                    ", port=" + port +
+                    '}';
         }
     }
 }

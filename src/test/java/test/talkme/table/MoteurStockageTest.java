@@ -23,8 +23,8 @@ class MoteurStockageTest {
         
         // Create columns with types and empty value lists
         columns = new HashMap<>();
-        columns.put("col1", new Column("STRING", new ArrayList<>()));
-        columns.put("col2", new Column("INTEGER", new ArrayList<>()));
+        columns.put("col1", new Column("col1", "STRING", new ArrayList<>()));
+        columns.put("col2", new Column("col2", "INTEGER", new ArrayList<>()));
         
         // Create table with name and columns
         table = new Table("testTable", columns);

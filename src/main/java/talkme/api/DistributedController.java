@@ -24,18 +24,14 @@ public class DistributedController {
     @POST
     @Path("/table")
     public Response createTableAcrossNodes(@RequestBody Table table) {
-        if (table.getName() == null || table.getName().isEmpty()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(new StatusMessage("Invalid table name")).build();
-        }
-
         List<Future<Response>> futures = new ArrayList<>();
-        
+
         // Forward table creation request to all nodes
         for (ConfigurationManager.NodeConfig node : configManager.getNodes()) {
             futures.add(executorService.submit(() -> {
                 try {
-                    HttpClient.post(node, "/api/table", table, Table.class);
+                    Table result = HttpClient.post(node, "/api/table", table, Table.class);
+
                     return Response.status(Response.Status.CREATED)
                             .entity(new StatusMessage("Table created on node " + node.getId())).build();
                 } catch (Exception e) {
@@ -44,7 +40,7 @@ public class DistributedController {
                 }
             }));
         }
-        
+
         // Collect responses
         List<Response> responses = futures.stream()
                 .map(future -> {
@@ -56,14 +52,14 @@ public class DistributedController {
                     }
                 })
                 .toList();
-        
+
         // If any node failed, return error
         for (Response response : responses) {
             if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
                 return response;
             }
         }
-        
+
         return Response.status(Response.Status.CREATED)
                 .entity(new StatusMessage("Table successfully created across all nodes")).build();
     }
@@ -102,6 +98,8 @@ public class DistributedController {
             
             futures.add(executorService.submit(() -> {
                 try {
+                    System.out.println("Uploading file to node: " + node.getId() + " at URL: " + node.getUrl() + "/api/upload");
+                    
                     // Actually send the file content to the remote node
                     StatusMessage result = HttpClient.uploadFile(
                             node, 
@@ -111,9 +109,15 @@ public class DistributedController {
                             limit,
                             StatusMessage.class);
                     
+                    if (result == null) {
+                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                                .entity(new StatusMessage("Received null response from node " + node.getId())).build();
+                    }
+                    
                     return Response.status(Response.Status.OK)
-                            .entity(new StatusMessage("File processed on node " + node.getId())).build();
+                            .entity(new StatusMessage("File processed on node " + node.getId() + ": " + result.getMessage())).build();
                 } catch (Exception e) {
+                    e.printStackTrace(); // Add stack trace for debugging
                     return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                             .entity(new StatusMessage("Failed to process file on node " + node.getId() + ": " + e.getMessage())).build();
                 }
@@ -126,6 +130,7 @@ public class DistributedController {
                     try {
                         return future.get(30, TimeUnit.SECONDS);
                     } catch (Exception e) {
+                        e.printStackTrace(); // Add stack trace for debugging
                         return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                                 .entity(new StatusMessage("Error waiting for node response: " + e.getMessage())).build();
                     }
@@ -151,6 +156,7 @@ public class DistributedController {
                     return localResponse;
                 }
             } catch (Exception e) {
+                e.printStackTrace(); // Add stack trace for debugging
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                         .entity(new StatusMessage("Failed to process file on current node: " + e.getMessage())).build();
             }
@@ -195,3 +201,4 @@ public class DistributedController {
         return combinedResults;
     }
 }
+

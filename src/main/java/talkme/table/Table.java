@@ -1,6 +1,7 @@
 package talkme.table;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
@@ -14,15 +15,26 @@ public class Table {
     public Table(@JsonProperty("name") String name, @JsonProperty("columns") Map<String, Column> columns) {
         this.name = name;
         this.columns = columns;
+        System.out.println("Name: " + this.name + " Columns: " + this.columns);
     }
 
     public String getName() {
         return name;
     }
+
+    @JsonIgnore
     public List<String> getColumnNames(){
         return List.copyOf(columns.keySet());
     }
     public Map<String, Column> getColumns() {
         return columns;
+    }
+
+    @Override
+    public String toString() {
+        return "Table{" +
+                "columns=" + columns +
+                ", name='" + name + '\'' +
+                '}';
     }
 }

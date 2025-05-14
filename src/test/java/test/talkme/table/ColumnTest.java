@@ -18,11 +18,14 @@ class ColumnTest {
         
         List<Object> values1 = new ArrayList<>();
         List<Object> values2 = Arrays.asList(1, 2, 3);
+
+        String name1 = "";
+        String name2 = "default";
         
-        Column col1 = new Column(type1, values1);
-        Column col2 = new Column(type1, values1);
-        Column col3 = new Column(type1, values2);
-        Column col4 = new Column(type2, values1);
+        Column col1 = new Column(name1, type1, values1);
+        Column col2 = new Column(name2, type1, values1);
+        Column col3 = new Column(name1, type1, values2);
+        Column col4 = new Column(name2, type2, values1);
 
         assertEquals(col1, col2, "Columns with same type and values should be equal");
         assertNotEquals(col1, col3, "Columns with different values should not be equal");
@@ -31,9 +34,10 @@ class ColumnTest {
 
     @Test
     void testGetters() {
+        String name = "testName";
         String type = "INT64";
         List<Object> values = Arrays.asList(1L, 2L, 3L);
-        Column column = new Column(type, values);
+        Column column = new Column(name, type, values);
 
         assertEquals(type, column.getType(), "getType() should return the correct type");
         assertEquals(values, column.getValues(), "getValues() should return the correct values");
@@ -41,9 +45,10 @@ class ColumnTest {
 
     @Test
     void testInequalityWithNull() {
+        String name = "testName";
         String type = "BOOLEAN";
         List<Object> values = Arrays.asList(true, false, true);
-        Column column = new Column(type, values);
+        Column column = new Column(name, type, values);
 
         assertNotEquals(null, column, "A column should not be equal to null");
     }

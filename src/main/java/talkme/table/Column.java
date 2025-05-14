@@ -12,8 +12,10 @@ public class Column {
 
     // Getters and setters
     @JsonCreator
-    public Column(@JsonProperty("type") String type,
+    public Column(@JsonProperty("name") String name,
+                  @JsonProperty("type") String type,
                   @JsonProperty("values") List<Object> values) {
+        this.name = name;
         this.type = type;
         this.values = values;
     }
@@ -23,6 +25,15 @@ public class Column {
         if (!(o instanceof Column ot)) return false;
 
         return ((type.equals(ot.getType())) && (values.equals(ot.getValues())));
+    }
+
+    @Override
+    public String toString() {
+        return "Column{" +
+                "name='" + name + '\'' +
+                ", type='" + type + '\'' +
+                ", values=" + values +
+                '}';
     }
 
     public String getName(){ return name;}

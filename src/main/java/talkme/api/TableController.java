@@ -1,5 +1,6 @@
 package talkme.api;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import talkme.parser.ParquetParser;
 import talkme.table.ColonnesException;
 import talkme.table.Database;
@@ -35,24 +36,22 @@ public class TableController {
      */
     @POST
     @Path("/table")
-    public Response create(@RequestBody Table t){
-        //On vérifie si une table de même nom existe déjà
-        //Vérifier si name est null/vide
-        if(t.getName() == null || t.getName().isEmpty()){
+    public Response create(@RequestBody Table table) {
+        if(table == null || table.getName() == null || table.getName().isEmpty()){
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new StatusMessage("Nom de table invalide")).build();
         }
 
         // Ajout de la table dans la Map contenant toutes les tables
         try {
-            Database.add(t);
+            Database.add(table);
         }catch (SameNameException e){
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new StatusMessage("Table de même nom existe déjà")).build();
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity(t).build();
+                .entity(table).build();
     }
 
     /*
@@ -98,3 +97,4 @@ public class TableController {
     }
 
 }
+
