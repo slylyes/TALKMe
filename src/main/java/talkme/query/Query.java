@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import talkme.table.Table;
 import java.util.List;
+import java.util.Map;
 
 import static talkme.table.Database.tableMap;
 
@@ -13,10 +14,14 @@ public class Query {
     private final List<String> columns;
     private final List<List<String>> filters;
     private final List<String>  groupBy;
+    private final List<Map<String, String>> aggregates;
 
     @JsonCreator
     public Query(@JsonProperty("name") String name,@JsonProperty("columns")  List<String> columns,
-                 @JsonProperty("filters")  List<List<String>> filters, @JsonProperty("groupBy")  List<String>  groupBy ) {
+                 @JsonProperty("filters")  List<List<String>> filters,
+                 @JsonProperty("groupBy")  List<String>  groupBy,
+                 @JsonProperty("aggregates")  List<Map<String, String>> aggregates
+                 ) {
 
         if (!tableMap.containsKey(name)) {
             throw new IllegalArgumentException() ;
@@ -29,7 +34,7 @@ public class Query {
         this.columns=columns;
         this.filters = filters;
         this.groupBy = groupBy;
-
+        this.aggregates = aggregates;
     }
 
 
@@ -49,7 +54,7 @@ public class Query {
         return groupBy;
     }
 
-    public Boolean groupByActivated(){
-        return !groupBy.isEmpty();
+    public List<Map<String, String>> getAggregates() {
+        return aggregates;
     }
 }

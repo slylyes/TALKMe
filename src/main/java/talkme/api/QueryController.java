@@ -30,42 +30,16 @@ public class QueryController {
 
         List<Integer> filteredIndexes = new ArrayList<>();
 
-        filteredIndexes = handleConditions(query);
+        MoteurStockage moteurStockage = query.getTable().getMoteurStockage();
 
-        List<List<Object>> data=  MoteurStockage.select(query.getTable(),query.getColumns(), filteredIndexes);
+        filteredIndexes = handleConditions(query, moteurStockage);
 
-        if (query.groupByActivated()){
-            List<String> cols = query.getColumns();
-            List<String> groupBy = query.getGroupBy();
-            List<Integer> idxCols = new ArrayList<>();
-
-            Boolean valid = true;
-            for (String col : groupBy) {
-                if (cols.contains(col)) {
-                    idxCols.add(cols.indexOf(col));
-                }else{
-                    valid = false;
-                }
-            }
-            if (valid) {
-                data = MoteurStockage.groupBy(data, idxCols);
-            }
-        }
-
-        dataMap = new ArrayList<>();
-
-        for (List<Object> ligne : data) {
-            Map<String, Object> map = new HashMap<>();
-            for (int i = 0; i < query.getColumns().size(); i++) {
-                map.put(query.getColumns().get(i), ligne.get(i));
-            }
-            dataMap.add(map);
-        }
+        dataMap =  moteurStockage.select(filteredIndexes, query.getColumns(),query.getGroupBy(), query.getAggregates());
 
         return dataMap;
     }
 
-    private List<Integer> handleConditions(Query query){
+    private List<Integer> handleConditions(Query query, MoteurStockage moteurStockage){
         int nbRows = query.getTable().getColumns().get(query.getColumns().get(0)).getValues().size();
         List<Integer> filteredIndexes= IntStream.range(0, nbRows).boxed().toList();
 
@@ -76,13 +50,13 @@ public class QueryController {
 
             filteredIndexes = switch (condition.get(1)) {
                 case "=" ->
-                        MoteurStockage.whereEquals(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                        moteurStockage.whereEquals(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
                 case "<" ->
-                        MoteurStockage.whereLessThan(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                        moteurStockage.whereLessThan(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
                 case ">" ->
-                        MoteurStockage.whereGreaterThan(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                        moteurStockage.whereGreaterThan(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
                 case "!=" ->
-                        MoteurStockage.whereDifferent(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
+                        moteurStockage.whereDifferent(t.getColumns().get(condition.get(0)), condition.get(2), filteredIndexes);
                 default -> filteredIndexes;
             };
 

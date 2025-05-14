@@ -3,17 +3,22 @@
     "columns": [
         "vendor_name",
         "Passenger_Count",
-        "surcharge",
-        "Tip_Amt"
+        "Total_Amt",
+        "Trip_Distance"
     ],
     "filters": [
-        ["vendor_name","!=","CMT"],
-        ["Passenger_Count","!=","2"],
-        ["surcharge","=","0.0"],
-        ["Tip_Amt","=","0.0"]
+        ["vendor_name","=","DDS"],
+        ["Passenger_Count","=","4"]
     ],
     "groupBy": [
         "vendor_name",
         "Passenger_Count"
+    ],
+    "aggregates": [
+        { "function": "SUM", "column": "Total_Amt" },
+        { "function": "SUM", "column": "Trip_Distance" },
+        { "function": "COUNT", "column": "*" },
+        { "function": "AVG", "column": "Total_Amt" }
+
     ]
 }

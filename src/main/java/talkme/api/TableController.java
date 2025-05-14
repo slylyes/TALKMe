@@ -84,7 +84,7 @@ public class TableController {
 
         try {
             ParquetParser parser = new ParquetParser(parquetFile, limite);
-            Database.insertInTable(table, parser.getColumnNames(), parser.getNextBatch());
+            table.getMoteurStockage().insert(parser.getColumnNames(), parser.getNextBatch());
             parser.close();
         } catch (IOException e) {
             return Response.status(Response.Status.BAD_REQUEST).
