@@ -15,7 +15,6 @@ public class Table {
     public Table(@JsonProperty("name") String name, @JsonProperty("columns") Map<String, Column> columns) {
         this.name = name;
         this.columns = columns;
-        System.out.println("Name: " + this.name + " Columns: " + this.columns);
     }
 
     public String getName() {

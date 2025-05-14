@@ -3,6 +3,7 @@ package talkme.api;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import talkme.config.ConfigurationManager;
 import talkme.http.HttpClient;
+import talkme.parser.ParquetParser;
 import talkme.query.Query;
 import talkme.table.Table;
 
@@ -82,88 +83,116 @@ public class DistributedController {
                     .entity(new StatusMessage("Invalid file uploaded")).build();
         }
         
-        List<Future<Response>> futures = new ArrayList<>();
-        
-        // Process locally on the current node first
-        int currentNodeId = configManager.getCurrentNodeId();
-        boolean processedLocalNode = false;
-        
-        // Forward file to each node
-        for (ConfigurationManager.NodeConfig node : configManager.getNodes()) {
-            // Skip current node as it already has the file
-            if (node.getId() == currentNodeId) {
-                processedLocalNode = true;
-                continue;
+        try {
+            // Parse the parquet file once on this node
+            ParquetParser parser = new ParquetParser(parquetFile, limit);
+            List<String> columnNames = parser.getColumnNames();
+            List<List<Object>> allData = parser.getNextBatch();
+            parser.close();
+            
+            // Determine how many nodes we have
+            List<ConfigurationManager.NodeConfig> nodes = configManager.getNodes();
+            int nodeCount = nodes.size();
+            
+            if (nodeCount == 0) {
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(new StatusMessage("No nodes configured")).build();
             }
             
-            futures.add(executorService.submit(() -> {
-                try {
-                    System.out.println("Uploading file to node: " + node.getId() + " at URL: " + node.getUrl() + "/api/upload");
-                    
-                    // Actually send the file content to the remote node
-                    StatusMessage result = HttpClient.uploadFile(
-                            node, 
-                            "/api/upload", 
-                            parquetFile, 
-                            tableName, 
-                            limit,
-                            StatusMessage.class);
-                    
-                    if (result == null) {
-                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                .entity(new StatusMessage("Received null response from node " + node.getId())).build();
-                    }
-                    
-                    return Response.status(Response.Status.OK)
-                            .entity(new StatusMessage("File processed on node " + node.getId() + ": " + result.getMessage())).build();
-                } catch (Exception e) {
-                    e.printStackTrace(); // Add stack trace for debugging
-                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                            .entity(new StatusMessage("Failed to process file on node " + node.getId() + ": " + e.getMessage())).build();
-                }
-            }));
-        }
-        
-        // Collect responses
-        List<Response> responses = futures.stream()
-                .map(future -> {
-                    try {
-                        return future.get(30, TimeUnit.SECONDS);
-                    } catch (Exception e) {
-                        e.printStackTrace(); // Add stack trace for debugging
-                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                .entity(new StatusMessage("Error waiting for node response: " + e.getMessage())).build();
-                    }
-                })
-                .toList();
-        
-        // Check if any node failed
-        for (Response response : responses) {
-            if (response.getStatus() != Response.Status.OK.getStatusCode()) {
-                return response;
+            // Calculate how many rows each node should get
+            int rowCount = 0;
+            if (allData.size() > 0 && allData.get(0) != null) {
+                rowCount = allData.get(0).size();
             }
-        }
-        
-        // If current node wasn't processed yet (because we skipped it in the first loop),
-        // process it now using the local controller
-        if (!processedLocalNode) {
-            try {
-                // Use the TableController directly to process the file locally
-                TableController tableController = new TableController();
-                Response localResponse = tableController.uploadFile(tableName, limit, parquetFile);
+            
+            if (rowCount == 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(new StatusMessage("No data found in file")).build();
+            }
+            
+            int rowsPerNode = rowCount / nodeCount;
+            int remainderRows = rowCount % nodeCount;
+            
+            List<Future<Response>> futures = new ArrayList<>();
+            
+            for (int nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
+                final int currentNodeIndex = nodeIndex;
+                ConfigurationManager.NodeConfig node = nodes.get(nodeIndex);
                 
-                if (localResponse.getStatus() != Response.Status.OK.getStatusCode()) {
-                    return localResponse;
-                }
-            } catch (Exception e) {
-                e.printStackTrace(); // Add stack trace for debugging
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity(new StatusMessage("Failed to process file on current node: " + e.getMessage())).build();
+                futures.add(executorService.submit(() -> {
+                    try {
+                        // Calculate start and end indices for this node's data portion
+                        int startRow = currentNodeIndex * rowsPerNode;
+                        int endRow = startRow + rowsPerNode;
+                        
+                        // Add remainder rows to the last node
+                        if (currentNodeIndex == nodeCount - 1) {
+                            endRow += remainderRows;
+                        }
+                        
+                        // Extract this node's portion of data
+                        List<List<Object>> nodeData = new ArrayList<>();
+                        for (List<Object> column : allData) {
+                            List<Object> nodeColumn = new ArrayList<>(column.subList(startRow, endRow));
+                            nodeData.add(nodeColumn);
+                        }
+                        
+                        // Create a data package to send to the node
+                        Map<String, Object> dataPackage = new HashMap<>();
+                        dataPackage.put("tableName", tableName);
+                        dataPackage.put("columns", columnNames);
+                        dataPackage.put("data", nodeData);
+                        
+                        System.out.println("Sending data to node " + node.getId() + 
+                                          ": rows " + startRow + "-" + (endRow - 1));
+                        
+                        // Send the data portion to this node
+                        StatusMessage result = HttpClient.post(
+                                node,
+                                "/api/insert-data",
+                                dataPackage,
+                                StatusMessage.class);
+                        
+                        return Response.status(Response.Status.OK)
+                                .entity(new StatusMessage("Data processed on node " + node.getId() + 
+                                                         " (" + (endRow - startRow) + " rows)")).build();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                                .entity(new StatusMessage("Failed to process data on node " + node.getId() + 
+                                                        ": " + e.getMessage())).build();
+                    }
+                }));
             }
+            
+            // Collect responses
+            List<Response> responses = futures.stream()
+                    .map(future -> {
+                        try {
+                            return future.get(30, TimeUnit.SECONDS);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                                    .entity(new StatusMessage("Error waiting for node response: " + e.getMessage())).build();
+                        }
+                    })
+                    .toList();
+            
+            // Check if any node failed
+            for (Response response : responses) {
+                if (response.getStatus() != Response.Status.OK.getStatusCode()) {
+                    return response;
+                }
+            }
+            
+            return Response.status(Response.Status.OK)
+                    .entity(new StatusMessage("Data successfully distributed across all nodes")).build();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new StatusMessage("Failed to process file: " + e.getMessage())).build();
         }
-        
-        return Response.status(Response.Status.OK)
-                .entity(new StatusMessage("File successfully processed across all nodes")).build();
     }
     
     @POST
@@ -201,4 +230,3 @@ public class DistributedController {
         return combinedResults;
     }
 }
-
