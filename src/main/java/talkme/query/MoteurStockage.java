@@ -269,8 +269,14 @@ public class MoteurStockage {
             return ((String) a).compareTo(((Binary) b).toStringUsingUTF8());
         }
 
-        // Cas générique
-        if (a instanceof Comparable && b instanceof Comparable) {
+        if (a instanceof Number && b instanceof Number) {
+            double da = ((Number) a).doubleValue();
+            double db = ((Number) b).doubleValue();
+            return Double.compare(da, db);
+        }
+
+        // Traitement standard Comparable
+        if (a instanceof Comparable && b instanceof Comparable && a.getClass().equals(b.getClass())) {
             return ((Comparable<Object>) a).compareTo(b);
         }
 
