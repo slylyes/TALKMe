@@ -36,6 +36,7 @@ public class DistributedController {
                     return Response.status(Response.Status.CREATED)
                             .entity(new StatusMessage("Table created on node " + node.getId())).build();
                 } catch (Exception e) {
+                    e.printStackTrace();
                     return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                             .entity(new StatusMessage("Failed to create table on node " + node.getId() + ": " + e.getMessage())).build();
                 }
@@ -162,7 +163,6 @@ public class DistributedController {
                                 .entity(new StatusMessage("Data processed on node " + node.getId() + 
                                                          " (" + (endRow - startRow) + " rows)")).build();
                     } catch (Exception e) {
-                        e.printStackTrace();
                         return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                                 .entity(new StatusMessage("Failed to process data on node " + node.getId() + 
                                                         ": " + e.getMessage())).build();
@@ -200,38 +200,57 @@ public class DistributedController {
         }
     }
     
-    @POST
+    @GET
     @Path("/filter")
+    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public List<List<Object>> filterDataAcrossNodes(@RequestBody Query query) {
-        List<Future<List<List<Object>>>> futures = new ArrayList<>();
+    public Response filterDataAcrossNodes(@RequestBody Query query) {
+        List<Future<List<Map<String, Object>>>> futures = new ArrayList<>();
+        
+        System.out.println("Received distributed filter query for: " + 
+                           (query.getTable() != null ? query.getTable().getName() : "unknown table"));
         
         // Forward query to all nodes
         for (ConfigurationManager.NodeConfig node : configManager.getNodes()) {
             futures.add(executorService.submit(() -> {
                 try {
-                    // Convert to a properly typed array
+                    System.out.println("Sending query to node: " + node.getId());
+                    // Use POST to send the query to each node
                     return HttpClient.post(node, "/data/filter", query, List.class);
                 } catch (Exception e) {
                     System.err.println("Error querying node " + node.getId() + ": " + e.getMessage());
-                    return new ArrayList<List<Object>>();
+                    e.printStackTrace();
+                    return new ArrayList<Map<String, Object>>();
                 }
             }));
         }
         
         // Merge results from all nodes
-        List<List<Object>> combinedResults = new ArrayList<>();
-        for (Future<List<List<Object>>> future : futures) {
+        List<Map<String, Object>> combinedResults = new ArrayList<>();
+        boolean hasErrors = false;
+        StringBuilder errorMessages = new StringBuilder("Errors occurred when querying nodes: ");
+        
+        for (Future<List<Map<String, Object>>> future : futures) {
             try {
-                List<List<Object>> nodeResults = future.get(20, TimeUnit.SECONDS);
-                if (nodeResults != null && !nodeResults.isEmpty()) {
+                List<Map<String, Object>> nodeResults = future.get(30, TimeUnit.SECONDS);
+                if (nodeResults != null) {
                     combinedResults.addAll(nodeResults);
                 }
             } catch (Exception e) {
+                hasErrors = true;
+                errorMessages.append(e.getMessage()).append("; ");
                 System.err.println("Error getting results from node: " + e.getMessage());
+                e.printStackTrace();
             }
         }
         
-        return combinedResults;
+        if (hasErrors && combinedResults.isEmpty()) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new StatusMessage(errorMessages.toString())).build();
+        }
+        
+        System.out.println("Combined results from all nodes: " + combinedResults.size() + " rows");
+        return Response.ok(combinedResults).build();
     }
 }
+
