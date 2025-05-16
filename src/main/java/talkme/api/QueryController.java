@@ -35,7 +35,8 @@ public class QueryController {
 
         filteredIndexes = handleConditions(query, moteurStockage);
 
-        dataMap =  moteurStockage.select(filteredIndexes, query.getColumns(),query.getGroupBy(), query.getAggregates());
+        //Liste groupby vide car DistributedController s'en occupe
+        dataMap =  moteurStockage.select(filteredIndexes, query.getColumns(),new ArrayList<>(), query.getAggregates());
 
         return Response.status(Response.Status.OK).
                 entity(dataMap)

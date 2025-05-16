@@ -4,6 +4,7 @@ import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import talkme.config.ConfigurationManager;
 import talkme.http.HttpClient;
 import talkme.parser.ParquetParser;
+import talkme.query.MoteurStockage;
 import talkme.query.Query;
 import talkme.table.Table;
 
@@ -250,7 +251,28 @@ public class DistributedController {
         }
         
         System.out.println("Combined results from all nodes: " + combinedResults.size() + " rows");
+        
+        // Check if we need to handle group by
+        if (query.getGroupBy() != null && !query.getGroupBy().isEmpty()) {
+            System.out.println("Applying distributed group by with " + query.getGroupBy().size() + " columns");
+            
+            // Create a temporary MoteurStockage to perform the group by operation
+            // Since we need a Table, we'll create a minimal one just for this operation
+            Table tempTable = null;
+            MoteurStockage tempMoteur = new MoteurStockage(tempTable);
+            
+            // Perform the group by operation on the combined results
+            List<Map<String, Object>> groupedResults = tempMoteur.groupBy(
+                combinedResults,
+                query.getColumns(),
+                query.getGroupBy(),
+                query.getAggregates() != null ? query.getAggregates() : new ArrayList<>()
+            );
+            
+            System.out.println("After distributed group by: " + groupedResults.size() + " rows");
+            return Response.ok(groupedResults).build();
+        }
+        
         return Response.ok(combinedResults).build();
     }
 }
-

@@ -44,33 +44,33 @@ public class MoteurStockage {
         }
 
 
-        if (!columnsGroupBy.isEmpty()){
 
-            for (String col : columnsGroupBy) {
-                if (!colSelect.contains(col)) {
-                    throw new IllegalArgumentException("Une des colonnes du groupby n'est pas dans le select.");
-                }
-            }
-
-            if (!aggregates.isEmpty()) {
-                for (Map<String, String> agg : aggregates) {
-                    String column = agg.get("column");
-
-                    if ( !colSelect.contains(column) && !column.equals("*") ) {
-                        throw new IllegalArgumentException("Une des colonnes des aggrégations n'est pas dans le select.");
-
-                    }
-                }
-            }
-
-            result = this.groupBy(result, columnsGroupBy, aggregates);
-
-        }
 
         return result;
     }
 
-    public List<Map<String, Object>> groupBy(List<Map<String, Object>> selectValues, List<String> cols, List<Map<String, String>> aggregates) {
+    public List<Map<String, Object>> groupBy(List<Map<String, Object>> selectValues, List<String> colSelect, List<String> columnsGroupBy, List<Map<String, String>> aggregates) {
+        if (columnsGroupBy.isEmpty()){
+            return selectValues;
+        }
+
+        for (String col : columnsGroupBy) {
+            if (!colSelect.contains(col)) {
+                throw new IllegalArgumentException("Une des colonnes du groupby n'est pas dans le select.");
+            }
+        }
+
+        if (!aggregates.isEmpty()) {
+            for (Map<String, String> agg : aggregates) {
+                String column = agg.get("column");
+
+                if ( !colSelect.contains(column) && !column.equals("*") ) {
+                    throw new IllegalArgumentException("Une des colonnes des aggrégations n'est pas dans le select.");
+
+                }
+            }
+        }
+
         Set<Map<String, Object>> resultSet = new HashSet<>();
 
         Map<Map<String, Object>, List<Integer>> mapAggregation = new HashMap<>();
@@ -80,7 +80,7 @@ public class MoteurStockage {
            Map<String, Object> row = selectValues.get(i);
            Map<String, Object> rowGroupBy = new HashMap<>();
            for (String col : row.keySet()) {
-               if (cols.contains(col)) {
+               if (columnsGroupBy.contains(col)) {
                    rowGroupBy.put(col, row.get(col));
                }
            }
