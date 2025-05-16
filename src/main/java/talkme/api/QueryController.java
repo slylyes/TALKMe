@@ -5,11 +5,9 @@ import talkme.query.MoteurStockage;
 import talkme.query.Query;
 import talkme.table.Table;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -23,11 +21,11 @@ public class QueryController {
     private List<Map<String, Object>> dataMap = new ArrayList<>();
 
 
-    @GET
+    @POST
     @Path("/filter")
     @Produces(MediaType.APPLICATION_JSON)
 
-    public List<Map<String, Object>> filter(
+    public Response filter(
             @RequestBody Query query
     ){
 
@@ -39,8 +37,9 @@ public class QueryController {
 
         dataMap =  moteurStockage.select(filteredIndexes, query.getColumns(),query.getGroupBy(), query.getAggregates());
 
-
-        return dataMap;
+        return Response.status(Response.Status.OK).
+                entity(dataMap)
+                .build();
     }
 
     private List<Integer> handleConditions(Query query, MoteurStockage moteurStockage){

@@ -1,6 +1,7 @@
 package talkme.query;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import talkme.table.Table;
 import java.util.List;
@@ -39,10 +40,15 @@ public class Query {
 
 
     // Getters, if needed
+    @JsonIgnore
     public Table getTable() {
         return t;
     }
 
+    @JsonProperty("name")
+    public String getName() {
+        return t.getName();
+    }
     public List<String> getColumns(){
         return columns;
     }
