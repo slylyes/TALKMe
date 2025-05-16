@@ -26,15 +26,6 @@ import static talkme.table.Database.tableMap;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class TableController {
-    /*
-     * Création d'une table vide
-     * Paramètres:
-     *   name: nom de la table
-     *   columns: colonnes de la table séparées par des virgules
-     * Préconditions:
-     *   Une table de même nom ne doit pas exister
-     * Retourne un Response indiquant si la table a été créée ou si elle existe déjà
-     */
     @POST
     @Path("/table")
     public Response create(@RequestBody Table table) {
@@ -55,57 +46,6 @@ public class TableController {
                 .entity(table).build();
     }
 
-    /*
-     * Remplissage d'une table
-     * Arguments:
-     *   table: nom de la table à remplir
-     *   fileName: nom du fichier à partir duquel récupérer les données à mettre dans la table
-     *   offset: offset de lecture du fichier
-     * Préconditions:
-     *   La table doit déjà exister
-     *   Le fichier doit exister
-     * Retourne un Response indiquant si la table a pu être remplie ou pas
-     */
-    @POST
-    @Path("/upload")
-    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
-    public Response uploadFile(
-            @QueryParam("tableName") String tableName,
-            @QueryParam("limit") int limit,
-            File parquetFile) {
-
-        // Validate table existence
-        if (!tableMap.containsKey(tableName)) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(new StatusMessage("Table does not exist")).build();
-        }
-
-        Table table = tableMap.get(tableName);
-
-        try {
-
-            ParquetParser parser = new ParquetParser(parquetFile, limit);
-            table.getMoteurStockage().insert(parser.getColumnNames(), parser.getNextBatch());
-
-            parser.close();
-        } catch (IOException e) {
-            return Response.status(Response.Status.BAD_REQUEST).
-                    entity(new StatusMessage("Failed to process Parquet file")).build();
-        }catch (ColonnesException e){
-            return Response.status(Response.Status.BAD_REQUEST).
-                    entity(new StatusMessage("Les colonnes des données ne correspondent pas avec celles de la table"+e.getMessage())).build();
-        }
-
-        return Response.status(Response.Status.OK).entity(new StatusMessage("File uploaded and processed successfully\n"+limit+" lines were loaded")).build();
-    }
-
-    /**
-     * Endpoint to insert data distributed from the master node
-     * Parameters:
-     *   tableName: name of the table to insert data into
-     *   columns: list of column names
-     *   data: list of column data (List<List<Object>>)
-     */
     @POST
     @Path("/insert-data")
     public Response insertDistributedData(Map<String, Object> dataPackage) {

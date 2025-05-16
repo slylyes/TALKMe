@@ -31,28 +31,15 @@ public class HttpClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        
-        // Handle HTTP error responses with better diagnostics
+
         if (response.statusCode() >= 400) {
-            try {
-                StatusMessage errorMessage = objectMapper.readValue(response.body(), StatusMessage.class);
-                throw new RuntimeException("Error from remote node: HTTP " + response.statusCode() + 
+            StatusMessage errorMessage = objectMapper.readValue(response.body(), StatusMessage.class);
+            throw new RuntimeException("Error from remote node: HTTP " + response.statusCode() +
                                           " - " + errorMessage.getMessage());
-            } catch (Exception e) {
-                // If we can't parse as StatusMessage, return raw response
-                throw new RuntimeException("Error from remote node: HTTP " + response.statusCode() + 
-                                         " - Raw response: " + response.body());
-            }
         }
 
         // Handle empty successful responses
         if (response.body() == null || response.body().isEmpty()) {
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return null; // Allow empty responses for successful requests
-            }
-            if (responseType == Void.class) {
-                return null;
-            }
             throw new RuntimeException("Empty response body from remote node: " + url);
         }
 
@@ -109,9 +96,6 @@ public class HttpClient {
         }
         
         if (response.body() == null || response.body().isEmpty()) {
-            if (responseType == Void.class) {
-                return null;
-            }
             throw new RuntimeException("Empty response body from remote node: " + url);
         }
         
@@ -153,9 +137,6 @@ public class HttpClient {
         }
 
         if (response.body() == null || response.body().isEmpty()) {
-            if (responseType == Void.class) {
-                return null;
-            }
             throw new RuntimeException("Empty response body from remote node: " + url);
         }
         

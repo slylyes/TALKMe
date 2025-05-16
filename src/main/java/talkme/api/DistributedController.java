@@ -77,6 +77,11 @@ public class DistributedController {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new StatusMessage("Table name is required")).build();
         }
+
+        if (limit <= 0) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new StatusMessage("Limit must be greater than 0")).build();
+        }
         
         if (parquetFile == null || !parquetFile.exists()) {
             return Response.status(Response.Status.BAD_REQUEST)

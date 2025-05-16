@@ -26,19 +26,21 @@ public class ConfigurationManager {
 
     private void loadProperties() {
         try (InputStream input = ConfigurationManager.class.getClassLoader().getResourceAsStream("application.properties")) {
+
             if (input == null) {
                 System.err.println("Unable to find application.properties");
                 return;
             }
+
             properties.load(input);
             
             distributedEnabled = Boolean.parseBoolean(properties.getProperty("distributed.enabled", "false"));
-            currentNodeId = Integer.parseInt(properties.getProperty("current.node.id", "1"));
+            currentNodeId = Integer.parseInt(properties.getProperty("current.node.id"));
             
-            int nodeCount = Integer.parseInt(properties.getProperty("distributed.node.count", "1"));
+            int nodeCount = Integer.parseInt(properties.getProperty("distributed.node.count"));
             for (int i = 1; i <= nodeCount; i++) {
                 String ip = properties.getProperty("distributed.node." + i + ".ip");
-                int port = Integer.parseInt(properties.getProperty("distributed.node." + i + ".port", "8080"));
+                int port = Integer.parseInt(properties.getProperty("distributed.node." + i + ".port"));
                 NodeConfig nodeConfig = new NodeConfig(i, ip, port);
                 nodes.add(nodeConfig);
                 System.out.println("Node loaded from properties: " + nodeConfig);
