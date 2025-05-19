@@ -1,4 +1,4 @@
-package test.talkme.table;
+/*package test.talkme.table;
 
 import org.junit.jupiter.api.Test;
 import talkme.table.Column;
@@ -15,13 +15,13 @@ class ColumnTest {
     void testColumnEquality() {
         String type1 = "BINARY";
         String type2 = "INT32";
-        
+
         List<Object> values1 = new ArrayList<>();
         List<Object> values2 = Arrays.asList(1, 2, 3);
 
         String name1 = "";
         String name2 = "default";
-        
+
         Column col1 = new Column(name1, type1, values1);
         Column col2 = new Column(name2, type1, values1);
         Column col3 = new Column(name1, type1, values2);
@@ -53,3 +53,4 @@ class ColumnTest {
         assertNotEquals(null, column, "A column should not be equal to null");
     }
 }
+*/

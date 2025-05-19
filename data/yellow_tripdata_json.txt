@@ -1,77 +1,77 @@
 {
     "name": "testTable",
-    "columns": {
-        "vendor_name": {
-            "type": "BINARY",
-            "values": []
+    "columns": [
+        {
+            "name": "vendor_name",
+            "type": "BINARY"
         },
-        "Trip_Pickup_DateTime": {
-            "type": "BINARY",
-            "values": []
+        {
+            "name": "Trip_Pickup_DateTime",
+            "type": "BINARY"
         },
-        "Trip_Dropoff_DateTime": {
-            "type": "BINARY",
-            "values": []
+        {
+            "name": "Trip_Dropoff_DateTime",
+            "type": "BINARY"
         },
-        "Passenger_Count": {
-            "type": "INT64",
-            "values": []
+        {
+            "name": "Passenger_Count",
+            "type": "INT64"
         },
-        "Trip_Distance": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "Trip_Distance",
+            "type": "DOUBLE"
         },
-        "Start_Lon": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "Start_Lon",
+            "type": "DOUBLE"
         },
-        "Start_Lat": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "Start_Lat",
+            "type": "DOUBLE"
         },
-        "Rate_Code": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "Rate_Code",
+            "type": "DOUBLE"
         },
-        "store_and_forward": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "store_and_forward",
+            "type": "DOUBLE"
         },
-        "End_Lon": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "End_Lon",
+            "type": "DOUBLE"
         },
-        "End_Lat": {
-            "type": "BINARY",
-            "values": []
+        {
+            "name": "End_Lat",
+            "type": "BINARY"
         },
-        "Payment_Type": {
-            "type": "BINARY",
-            "values": []
+        {
+            "name": "Payment_Type",
+            "type": "BINARY"
         },
-        "Fare_Amt": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "Fare_Amt",
+            "type": "DOUBLE"
         },
-        "surcharge": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "surcharge",
+            "type": "DOUBLE"
         },
-        "mta_tax": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "mta_tax",
+            "type": "DOUBLE"
         },
-        "Tip_Amt": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "Tip_Amt",
+            "type": "DOUBLE"
         },
-        "Tolls_Amt": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "Tolls_Amt",
+            "type": "DOUBLE"
         },
-        "Total_Amt": {
-            "type": "DOUBLE",
-            "values": []
+        {
+            "name": "Total_Amt",
+            "type": "DOUBLE"
         }
-    }
+    ]
 }
