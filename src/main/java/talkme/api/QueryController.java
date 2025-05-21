@@ -18,7 +18,7 @@ public class QueryController {
 
     //List<List<Object>> data = parquetReader.getNextBatch();
 
-    private List<Map<String, Object>> dataMap = new ArrayList<>();
+    private List<List<Object>> dataMap = new ArrayList<>();
 
 
     @POST

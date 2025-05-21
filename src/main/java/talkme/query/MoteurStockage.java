@@ -1,8 +1,6 @@
 package talkme.query;
 
 
-import io.smallrye.openapi.api.models.responses.APIResponseImpl;
-
 import org.apache.parquet.io.api.Binary;
 import talkme.table.ColonnesException;
 import talkme.table.Column;
@@ -30,17 +28,17 @@ public class MoteurStockage {
         }
     }
 
-    public List<Map<String, Object>> select(List<Integer> index, List<String> colSelect, List<String> columnsGroupBy, List<Map<String, String>> aggregates) {
+    public List<List<Object>> select(List<Integer> index, List<String> colSelect, List<String> columnsGroupBy, List<Map<String, String>> aggregates) {
 
 
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<List<Object>> result = new ArrayList<>();
 
         for (Integer i : index) {
-            Map<String, Object> map = new HashMap<>();
+            List<Object> element = new ArrayList<>();
             for (String col : colSelect) {
-                map.put(col, table.getColumns().get(col).getValues().get(i));
+                element.add(table.getColumns().get(col).getValues().get(i));
             }
-            result.add(map);
+            result.add(element);
         }
 
 
@@ -112,7 +110,7 @@ public class MoteurStockage {
                     case "COUNT"   ->  mapAggregation = countAggregation(mapAggregation);
                     case "AVG"   ->  mapAggregation = averageAggregation(mapAggregation, column, selectValues);
                     default        -> throw new IllegalArgumentException("Fonction d'aggregation non pris en charge.");
-                };
+                }
             }
         }
 
