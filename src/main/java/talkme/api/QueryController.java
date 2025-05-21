@@ -18,8 +18,6 @@ public class QueryController {
 
     //List<List<Object>> data = parquetReader.getNextBatch();
 
-    private List<List<Object>> dataMap = new ArrayList<>();
-
 
     @POST
     @Path("/filter")
@@ -29,17 +27,15 @@ public class QueryController {
             @RequestBody Query query
     ){
 
-        List<Integer> filteredIndexes = new ArrayList<>();
-
         MoteurStockage moteurStockage = query.getTable().getMoteurStockage();
 
-        filteredIndexes = handleConditions(query, moteurStockage);
+        List<Integer> filteredIndexes = handleConditions(query, moteurStockage);
 
         //Liste groupby vide car DistributedController s'en occupe
-        dataMap =  moteurStockage.select(filteredIndexes, query.getColumns(),new ArrayList<>(), query.getAggregates());
+        List<List<Object>> dataList = moteurStockage.select(filteredIndexes, query.getColumns());
 
         return Response.status(Response.Status.OK).
-                entity(dataMap)
+                entity(dataList)
                 .build();
     }
 
@@ -48,7 +44,6 @@ public class QueryController {
         List<Integer> filteredIndexes= IntStream.range(0, nbRows).boxed().toList();
 
         Table t= query.getTable();
-        int nbFilter =  query.getFilters().size();
 
         for (List<String> condition: query.getFilters()){
 

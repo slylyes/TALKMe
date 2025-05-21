@@ -28,7 +28,7 @@ public class MoteurStockage {
         }
     }
 
-    public List<List<Object>> select(List<Integer> index, List<String> colSelect, List<String> columnsGroupBy, List<Map<String, String>> aggregates) {
+    public List<List<Object>> select(List<Integer> index, List<String> colSelect) {
 
 
         List<List<Object>> result = new ArrayList<>();
@@ -161,7 +161,7 @@ public class MoteurStockage {
     }
 
     public Map<Map<String, Object>, List<Integer>> countAggregation(Map<Map<String, Object>, List<Integer>> mapAggregation) {
-        int count = 0;
+        int count;
         Map<Map<String, Object>, List<Integer>> mapAggregationCopy = new HashMap<>(mapAggregation);
         for (Map.Entry<Map<String, Object>, List<Integer>> entry : mapAggregationCopy.entrySet()) {
             count = entry.getValue().size();
