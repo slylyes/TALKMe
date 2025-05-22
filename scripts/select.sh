@@ -3,7 +3,7 @@
 curl --noproxy localhost --location 'http://localhost:8080/data/filter' \
 --header 'Content-Type: application/json' \
 --data '{
-    "name": "Table",
+    "name": "table",
     "columns": [
         "vendor_name",
         "Passenger_Count",
