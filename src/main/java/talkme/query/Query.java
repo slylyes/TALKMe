@@ -17,14 +17,17 @@ public class Query {
     private final List<String>  groupBy;
     private final List<String>  orderBy;
     private final List<Map<String, String>> aggregates;
+    private final String orderDirection;
 
     @JsonCreator
     public Query(@JsonProperty("name") String name,@JsonProperty("columns")  List<String> columns,
                  @JsonProperty("filters")  List<List<String>> filters,
                  @JsonProperty("groupBy")  List<String>  groupBy,
                  @JsonProperty("aggregates")  List<Map<String, String>> aggregates,
-                 @JsonProperty("orderBY")  List<String>  orderBy
+                 @JsonProperty("orderBY")  List<String>  orderBy,
+                 @JsonProperty("orderDirection")  String  orderDirection
                  ) {
+        this.orderDirection = orderDirection;
 
         if (!tableMap.containsKey(name)) {
             throw new IllegalArgumentException() ;
@@ -68,5 +71,9 @@ public class Query {
 
     public List<Map<String, String>> getAggregates() {
         return aggregates;
+    }
+
+    public String getOrderDirection() {
+        return orderDirection;
     }
 }
