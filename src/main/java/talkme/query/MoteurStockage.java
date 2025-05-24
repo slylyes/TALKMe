@@ -177,6 +177,33 @@ public class MoteurStockage {
         return mapAggregation;
     }
 
+    public static List<Map<String, Object>> orderBy(List<Map<String, Object>> selectValues, List<String> colsSelect, List<String> colsOrder) {
+
+        for (String col : colsOrder){
+            if (!colsSelect.contains(col)){
+                throw new IllegalArgumentException("Une des colonnes du orderBy n'est pas dans le select.");
+            }
+        }
+
+        Comparator<Map<String, Object>> comparator = new Comparator<Map<String, Object>>() {
+            @Override
+            public int compare(Map<String, Object> a, Map<String, Object> b) {
+                for (String col : colsOrder) {
+                    Comparable v1 = (Comparable) a.get(col);
+                    Comparable v2 = (Comparable) b.get(col);
+                    int result = v1.compareTo(v2);
+                    if (result != 0) {
+                        return result;
+                    }
+                }
+                return 0;
+            }
+        };
+
+        selectValues.sort(comparator);
+        return selectValues;
+    }
+
 
     public List<Integer> whereEquals(Column col, String compared, List<Integer> prevSelected){
 

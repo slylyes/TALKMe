@@ -255,6 +255,7 @@ public class DistributedController {
 
         System.out.println(query.getAggregates());
 
+
         // Check if we need to handle group by
         if (query.getGroupBy() != null && !query.getGroupBy().isEmpty()) {
             System.out.println("Applying distributed group by with " + query.getGroupBy().size() + " columns");
@@ -271,13 +272,14 @@ public class DistributedController {
                 query.getGroupBy(),
                 query.getAggregates()
             );
-
+            if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null){
+                groupedResults = tempMoteur.orderBy(groupedResults, query.getColumns(),query.getOrderBy());
+            }
             System.out.println("After distributed group by: " + groupedResults.size() + " rows");
             return Response.ok(groupedResults).build();
         }else {
             // Check if we need to handle aggregates whith out group by
             if (!query.getAggregates().isEmpty() && query.getAggregates() != null){
-
                 Table tempTable = null;
                 MoteurStockage tempMoteur = new MoteurStockage(tempTable);
 
@@ -288,12 +290,21 @@ public class DistributedController {
                         query.getAggregates()
                 );
 
+                if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null){
+                    groupedResults = tempMoteur.orderBy(groupedResults, query.getColumns(),query.getOrderBy());
+                }
+
                 System.out.println("After distributed aggregation: " + groupedResults.size() + " rows");
                 return Response.ok(groupedResults).build();
 
             }
         }
 
+        if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null){
+            Table tempTable = null;
+            MoteurStockage tempMoteur = new MoteurStockage(tempTable);
+            combinedResults = tempMoteur.orderBy(combinedResults, query.getColumns(),query.getOrderBy());
+        }
         return Response.ok(combinedResults).build();
     }
 }

@@ -2,23 +2,22 @@
     "name": "taxi",
     "columns": [
         "vendor_name",
-        "Passenger_Count",
         "Total_Amt",
-        "Trip_Distance"
+        "Trip_Distance",
+        "Passenger_Count"
     ],
     "filters": [
-        ["vendor_name","=","DDS"],
-        ["Passenger_Count","=","4"]
+        ["vendor_name", "=", "DDS"]
     ],
     "groupBy": [
         "vendor_name",
         "Passenger_Count"
     ],
     "aggregates": [
-        { "function": "SUM", "column": "Total_Amt" },
-        { "function": "SUM", "column": "Trip_Distance" },
-        { "function": "COUNT", "column": "*" },
-        { "function": "AVG", "column": "Total_Amt" }
+        { "function": "SUM", "column": "Total_Amt" }
 
+    ],
+    "orderBy": [
+        "Passenger_Count"
     ]
 }
