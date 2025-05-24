@@ -206,11 +206,12 @@ public class DistributedController {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response filterDataAcrossNodes(@RequestBody Query query) {
+
         List<Future<List<Map<String, Object>>>> futures = new ArrayList<>();
-        
-        System.out.println("Received distributed filter query for: " + 
+
+        System.out.println("Received distributed filter query for: " +
                            (query.getTable() != null ? query.getTable().getName() : "unknown table"));
-        
+
         // Forward query to all nodes
         for (ConfigurationManager.NodeConfig node : configManager.getNodes()) {
             futures.add(executorService.submit(() -> {
@@ -225,12 +226,12 @@ public class DistributedController {
                 }
             }));
         }
-        
+
         // Merge results from all nodes
         List<Map<String, Object>> combinedResults = new ArrayList<>();
         boolean hasErrors = false;
         StringBuilder errorMessages = new StringBuilder("Errors occurred when querying nodes: ");
-        
+
         for (Future<List<Map<String, Object>>> future : futures) {
             try {
                 List<Map<String, Object>> nodeResults = future.get(30, TimeUnit.SECONDS);
@@ -244,35 +245,55 @@ public class DistributedController {
                 e.printStackTrace();
             }
         }
-        
+
         if (hasErrors && combinedResults.isEmpty()) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new StatusMessage(errorMessages.toString())).build();
         }
-        
+
         System.out.println("Combined results from all nodes: " + combinedResults.size() + " rows");
-        
+
+        System.out.println(query.getAggregates());
+
         // Check if we need to handle group by
         if (query.getGroupBy() != null && !query.getGroupBy().isEmpty()) {
             System.out.println("Applying distributed group by with " + query.getGroupBy().size() + " columns");
-            
+
             // Create a temporary MoteurStockage to perform the group by operation
             // Since we need a Table, we'll create a minimal one just for this operation
             Table tempTable = null;
             MoteurStockage tempMoteur = new MoteurStockage(tempTable);
-            
+
             // Perform the group by operation on the combined results
             List<Map<String, Object>> groupedResults = tempMoteur.groupBy(
                 combinedResults,
                 query.getColumns(),
                 query.getGroupBy(),
-                query.getAggregates() != null ? query.getAggregates() : new ArrayList<>()
+                query.getAggregates()
             );
-            
+
             System.out.println("After distributed group by: " + groupedResults.size() + " rows");
             return Response.ok(groupedResults).build();
+        }else {
+            // Check if we need to handle aggregates whith out group by
+            if (!query.getAggregates().isEmpty() && query.getAggregates() != null){
+
+                Table tempTable = null;
+                MoteurStockage tempMoteur = new MoteurStockage(tempTable);
+
+                List<Map<String, Object>> groupedResults = tempMoteur.aggregationFonction(
+                        combinedResults,
+                        query.getColumns(),
+                        query.getGroupBy(),
+                        query.getAggregates()
+                );
+
+                System.out.println("After distributed aggregation: " + groupedResults.size() + " rows");
+                return Response.ok(groupedResults).build();
+
+            }
         }
-        
+
         return Response.ok(combinedResults).build();
     }
 }

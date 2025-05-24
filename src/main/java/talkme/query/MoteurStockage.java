@@ -28,22 +28,18 @@ public class MoteurStockage {
         }
     }
 
-    public List<List<Object>> select(List<Integer> index, List<String> colSelect) {
+    public List<Map<String,Object>> select(List<Integer> index, List<String> colSelect) {
 
 
-        List<List<Object>> result = new ArrayList<>();
+        List<Map<String,Object>> result = new ArrayList<>();
 
         for (Integer i : index) {
-            List<Object> element = new ArrayList<>();
+            Map<String,Object> element = new HashMap<>();
             for (String col : colSelect) {
-                element.add(table.getColumns().get(col).getValues().get(i));
+                element.put(col, table.getColumns().get(col).getValues().get(i));
             }
             result.add(element);
         }
-
-
-
-
         return result;
     }
 
@@ -58,6 +54,12 @@ public class MoteurStockage {
             }
         }
 
+        List<Map<String, Object>> resultSet = aggregationFonction(selectValues, colSelect, columnsGroupBy, aggregates);
+
+        return new ArrayList<>(resultSet);
+    }
+
+    public List<Map<String, Object>> aggregationFonction(List<Map<String, Object>> selectValues, List<String> colSelect, List<String> columnsGroupBy, List<Map<String, String>> aggregates) {
         if (!aggregates.isEmpty()) {
             for (Map<String, String> agg : aggregates) {
                 String column = agg.get("column");
@@ -73,30 +75,30 @@ public class MoteurStockage {
 
         Map<Map<String, Object>, List<Integer>> mapAggregation = new HashMap<>();
 
-       int size = selectValues.size();
-       for (int i = 0; i < size; i++) {
-           Map<String, Object> row = selectValues.get(i);
-           Map<String, Object> rowGroupBy = new HashMap<>();
-           for (String col : row.keySet()) {
-               if (columnsGroupBy.contains(col)) {
-                   rowGroupBy.put(col, row.get(col));
-               }
-           }
-           resultSet.add(rowGroupBy);
-           if (!aggregates.isEmpty()) {
-               List<Integer> listIdx = mapAggregation.get(rowGroupBy);
-               if (listIdx == null) {
-                   listIdx = new ArrayList<>();
-               }
-               listIdx.add(i);
-               mapAggregation.put(rowGroupBy, listIdx);
-           }
-       }
+        int size = selectValues.size();
+        for (int i = 0; i < size; i++) {
+            Map<String, Object> row = selectValues.get(i);
+            Map<String, Object> rowGroupBy = new HashMap<>();
+            for (String col : row.keySet()) {
+                if (columnsGroupBy.contains(col)) {
+                    rowGroupBy.put(col, row.get(col));
+                }
+            }
+            resultSet.add(rowGroupBy);
+            if (!aggregates.isEmpty()) {
+                List<Integer> listIdx = mapAggregation.get(rowGroupBy);
+                if (listIdx == null) {
+                    listIdx = new ArrayList<>();
+                }
+                listIdx.add(i);
+                mapAggregation.put(rowGroupBy, listIdx);
+            }
+        }
 
-       if (!mapAggregation.isEmpty()) {
-           resultSet = dispatcherAggregation(aggregates, mapAggregation, selectValues);
-       }
-       return new ArrayList<>(resultSet);
+        if (!mapAggregation.isEmpty()) {
+            resultSet = dispatcherAggregation(aggregates, mapAggregation, selectValues);
+        }
+        return new ArrayList<>(resultSet);
     }
 
     public Set<Map<String, Object>> dispatcherAggregation(List<Map<String, String>> aggregates, Map<Map<String, Object>, List<Integer>> mapAggregation, List<Map<String, Object>> selectValues) {

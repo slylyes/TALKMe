@@ -26,13 +26,13 @@ public class QueryController {
     public Response filter(
             @RequestBody Query query
     ){
-
+        System.out.println("okkkk filter");
         MoteurStockage moteurStockage = query.getTable().getMoteurStockage();
 
         List<Integer> filteredIndexes = handleConditions(query, moteurStockage);
 
         //Liste groupby vide car DistributedController s'en occupe
-        List<List<Object>> dataList = moteurStockage.select(filteredIndexes, query.getColumns());
+        List<Map<String,Object>>  dataList = moteurStockage.select(filteredIndexes, query.getColumns());
 
         return Response.status(Response.Status.OK).
                 entity(dataList)
