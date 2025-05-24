@@ -275,9 +275,9 @@ public class DistributedController {
             if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null){
                 groupedResults = tempMoteur.orderBy(groupedResults,query.getOrderBy(), query.getOrderDirection());
             }
-            /*if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < groupedResults.size()) {
+            if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < groupedResults.size()) {
                 groupedResults = groupedResults.subList(0, query.getLimit());
-            }*/
+            }
 
             System.out.println("After distributed group by: " + groupedResults.size() + " rows");
             return Response.ok(groupedResults).build();
@@ -297,9 +297,9 @@ public class DistributedController {
                 if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null){
                     groupedResults = tempMoteur.orderBy(groupedResults, query.getOrderBy(), query.getOrderDirection());
                 }
-               /* if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < groupedResults.size()) {
+              if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < groupedResults.size()) {
                     groupedResults = groupedResults.subList(0, query.getLimit());
-                }*/
+                }
 
                 System.out.println("After distributed aggregation: " + groupedResults.size() + " rows");
                 return Response.ok(groupedResults).build();
@@ -312,10 +312,10 @@ public class DistributedController {
             MoteurStockage tempMoteur = new MoteurStockage(tempTable);
             combinedResults = tempMoteur.orderBy(combinedResults, query.getOrderBy(), query.getOrderDirection());
         }
-        /*if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < combinedResults.size()) {
+        if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < combinedResults.size()) {
             combinedResults = combinedResults.subList(0, query.getLimit());
         }
-*/
+
         return Response.ok(combinedResults).build();
     }
 }
