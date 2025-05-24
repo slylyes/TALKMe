@@ -17,6 +17,8 @@ public class Query {
     private final List<String>  groupBy;
     private final List<String>  orderBy;
     private final List<Map<String, String>> aggregates;
+    //private Integer limit;
+
 
     @JsonCreator
     public Query(@JsonProperty("name") String name,@JsonProperty("columns")  List<String> columns,
@@ -69,4 +71,9 @@ public class Query {
     public List<Map<String, String>> getAggregates() {
         return aggregates;
     }
+
+   /* public Integer getLimit() { return limit; }
+
+    public void setLimit(Integer limit) { this.limit = limit; }
+*/
 }
