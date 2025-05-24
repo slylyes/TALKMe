@@ -8,16 +8,10 @@ fi
 TABLE_NAME="$1"
 LIMIT="$2"
 
-# To find the root of the project, then search /data (project's name must be 'TALKMe')
-PROJECT_ROOT=$(find ~ -type d -name "TALKMe" -print -quit)
 
-if [ -z "$PROJECT_ROOT" ]; then
-    echo "Error : Cannot find TALKMe directory from ~"
-    exit 1
-fi
 
 # Path to the parquet file from project root
-PARQUET_FILE="$PROJECT_ROOT/data/yellow_tripdata_2009-01.parquet"
+PARQUET_FILE="../data/yellow_tripdata_2009-01.parquet"
 
 if [ ! -f "$PARQUET_FILE" ]; then
     echo "Error : Cannot find $PARQUET_FILE "
