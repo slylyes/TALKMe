@@ -14,10 +14,11 @@
         "Passenger_Count"
     ],
     "aggregates": [
-        { "function": "SUM", "column": "Total_Amt" }
-
+        { "function": "SUM", "column": "Total_Amt" },
+        { "function": "COUNT", "column": "Total_Amt" }
     ],
     "orderBy": [
-        "Passenger_Count"
+        "sum_Total_Amt",
+        "count(*)"
     ]
 }

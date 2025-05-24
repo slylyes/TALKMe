@@ -177,8 +177,12 @@ public class MoteurStockage {
         return mapAggregation;
     }
 
-    public static List<Map<String, Object>> orderBy(List<Map<String, Object>> selectValues, List<String> colsSelect, List<String> colsOrder) {
+    public static List<Map<String, Object>> orderBy(List<Map<String, Object>> selectValues, List<String> colsOrder) {
+        if (selectValues.isEmpty()){
+            return selectValues;
+        }
 
+        Set<String> colsSelect = selectValues.get(0).keySet();
         for (String col : colsOrder){
             if (!colsSelect.contains(col)){
                 throw new IllegalArgumentException("Une des colonnes du orderBy n'est pas dans le select.");
