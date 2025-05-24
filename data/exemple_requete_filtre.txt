@@ -20,5 +20,6 @@
     "orderBy": [
         "sum_Total_Amt",
         "count(*)"
-    ]
+    ],
+    "orderDirection": "DESC"
 }

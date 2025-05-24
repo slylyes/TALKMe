@@ -177,7 +177,7 @@ public class MoteurStockage {
         return mapAggregation;
     }
 
-    public static List<Map<String, Object>> orderBy(List<Map<String, Object>> selectValues, List<String> colsOrder) {
+    public static List<Map<String, Object>> orderBy(List<Map<String, Object>> selectValues, List<String> colsOrder, String orderDirection) {
         if (selectValues.isEmpty()){
             return selectValues;
         }
@@ -205,6 +205,9 @@ public class MoteurStockage {
         };
 
         selectValues.sort(comparator);
+        if (orderDirection.equals("DESC")) {
+            Collections.reverse(selectValues);
+        }
         return selectValues;
     }
 
