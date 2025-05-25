@@ -1,5 +1,4 @@
-#! /bin/bash
-
+#!/bin/bash
 
 if [ -z "$1" ]; then
     echo "Usage: $0 <tableName>"
@@ -8,34 +7,49 @@ fi
 
 TABLE_NAME="$1"
 
-curl --noproxy localhost --location --request GET 'http://localhost:8080/distributed/filter' \
+# Effectue la requête et stocke le JSON dans une variable
+JSON=$(curl --silent --noproxy localhost --location --request GET 'http://localhost:8080/distributed/filter' \
 --header 'Content-Type: application/json' \
 --data '{
     "name": "'"$TABLE_NAME"'",
-             "columns": [
-                 "vendor_name",
-                 "Total_Amt",
-                 "Trip_Distance",
-                 "Passenger_Count"
-             ],
-             "filters": [
-                 ["vendor_name", "=", "DDS"]
-             ],
-             "groupBy": [
-                 "vendor_name",
-                 "Passenger_Count"
-             ],
-             "aggregates": [
-                 { "function": "SUM", "column": "Total_Amt" },
-                 { "function": "COUNT", "column": "Total_Amt" }
-             ],
-             "orderBy": [
-                 "sum_Total_Amt",
-                 "count(*)"
-             ],
-             "orderDirection": "DESC"
-         }'
+    "columns": [
+        "vendor_name",
+        "Total_Amt",
+        "Trip_Distance",
+        "Passenger_Count"
+    ],
+    "filters": [
+        ["vendor_name", "=", "DDS"]
+    ],
+    "groupBy": [
+        "vendor_name",
+        "Passenger_Count"
+    ],
+    "aggregates": [
+        { "function": "SUM", "column": "Total_Amt" },
+        { "function": "COUNT", "column": "Total_Amt" }
+    ],
+    "orderBy": [
+        "sum_Total_Amt",
+        "count(*)"
+    ],
+    "orderDirection": "DESC"
+}')
 
-echo ' '
+# Utilise Python pour afficher sous forme de tableau
+echo "$JSON" | python3 -c '
+import sys, json
 
+data = json.load(sys.stdin)
 
+cols = list(data[0].keys())
+col_widths = [max(len(str(row.get(col, ""))) for row in data + [{col: col}]) for col in cols]
+
+header = " | ".join(col.ljust(w) for col, w in zip(cols, col_widths))
+sep = "-+-".join("-" * w for w in col_widths)
+
+print(header)
+print(sep)
+for row in data:
+    print(" | ".join(str(row.get(col, "")).ljust(w) for col, w in zip(cols, col_widths)))
+'
