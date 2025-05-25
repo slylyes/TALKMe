@@ -134,7 +134,7 @@ public class MoteurStockage {
             Map<String, Object> newKey = new HashMap<>(entry.getKey());
             newKey.put("sum_"+column, sum);
             mapAggregation.put(newKey, entry.getValue());
-
+            sum = 0;
             //doubler la map key puis supprimer la map, ajouter la sum et la réajouter a la grosse map
         }
         return mapAggregation;
@@ -156,9 +156,10 @@ public class MoteurStockage {
             Map<String, Object> newKey = new HashMap<>(entry.getKey());
             newKey.put("avg_"+column, average);
             mapAggregation.put(newKey, entry.getValue());
-
+            average = 0;
             //doubler la map key puis supprimer la map, ajouter la sum et la réajouter a la grosse map
         }
+
         return mapAggregation;
     }
 
