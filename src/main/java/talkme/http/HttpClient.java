@@ -102,10 +102,17 @@ public class HttpClient {
     }
     
     public static <T> T uploadFile(ConfigurationManager.NodeConfig node, String path, File file, String tableName, Integer limit, Class<T> responseType) throws IOException, InterruptedException {
-        // Build URL with optional limit parameter
+        return uploadFile(node, path, file, tableName, limit, null, responseType);
+    }
+    
+    public static <T> T uploadFile(ConfigurationManager.NodeConfig node, String path, File file, String tableName, Integer limit, Integer batchSize, Class<T> responseType) throws IOException, InterruptedException {
+        // Build URL with optional parameters
         StringBuilder urlBuilder = new StringBuilder(node.getUrl() + path + "?tableName=" + tableName);
         if (limit != null) {
             urlBuilder.append("&limit=").append(limit);
+        }
+        if (batchSize != null) {
+            urlBuilder.append("&batchSize=").append(batchSize);
         }
         String url = urlBuilder.toString();
         
