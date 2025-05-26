@@ -46,6 +46,9 @@ public class DistributedController {
         }
     );
     
+    // Default batch size (can be configured via system property)
+    private static final int DEFAULT_BATCH_SIZE = 1_000_000;
+    
     // Implement shutdown hook to properly close thread pools
     {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -167,133 +170,167 @@ public class DistributedController {
                     .entity(new StatusMessage("Invalid file uploaded")).build();
         }
 
+        // If batchSize is not provided, use default
+        List<ConfigurationManager.NodeConfig> nodes = configManager.getNodes();
+        int nodeCount = nodes.size();
+
+        if (nodeCount == 0) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new StatusMessage("No nodes configured")).build();
+        }
+
         try {
-            // Use the data processing executor for CPU-intensive file parsing
-            CompletableFuture<List<List<Object>>> dataFuture = CompletableFuture.supplyAsync(() -> {
-                try {
-                    // Parse the parquet file once on this node
-                    ParquetParser parser = new ParquetParser(parquetFile, limit);
-                    List<List<Object>> allData = parser.getNextBatch();
-                    parser.close();
-                    return allData;
-                } catch (Exception e) {
-                    throw new CompletionException(e);
+            // Initialize the parser with the provided batch size
+            ParquetParser parser = new ParquetParser(parquetFile, limit);
+            List<String> columnNames = parser.getColumnNames();
+            long totalRows = parser.getTotalRowCount();
+            
+            System.out.println("Starting to process parquet file with " + totalRows + 
+                              " total rows");
+            
+            int batchNumber = 0;
+            int totalProcessedRows = 0;
+            
+            // Process the file in batches
+            while (parser.hasMoreData()) {
+                // Memory check before processing next batch
+                if (isMemoryLow()) {
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(new StatusMessage("Memory low, processed " + totalProcessedRows +
+                                    " rows before stopping. Try with a smaller file.")).build();
                 }
-            }, dataProcessingExecutor);
-            
-            CompletableFuture<List<String>> columnsFuture = CompletableFuture.supplyAsync(() -> {
-                try {
-                    ParquetParser parser = new ParquetParser(parquetFile, limit);
-                    List<String> columnNames = parser.getColumnNames();
-                    parser.close();
-                    return columnNames;
-                } catch (Exception e) {
-                    throw new CompletionException(e);
+
+                // Get the next batch of data
+                List<List<Object>> batchData = parser.getNextBatch();
+                batchNumber++;
+
+                // If we got an empty batch, we're done
+                if (batchData.isEmpty() || batchData.get(0).isEmpty()) {
+                    break;
                 }
-            }, dataProcessingExecutor);
-            
-            List<ConfigurationManager.NodeConfig> nodes = configManager.getNodes();
-            int nodeCount = nodes.size();
 
-            if (nodeCount == 0) {
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity(new StatusMessage("No nodes configured")).build();
+                int rowsInBatch = batchData.get(0).size();
+                totalProcessedRows += rowsInBatch;
+
+                System.out.println("Processing batch #" + batchNumber +
+                        " with " + rowsInBatch + " rows");
+
+                // Distribute this batch across nodes
+                Response batchResponse = processBatch(nodes, tableName, columnNames, batchData);
+
+                // If there was an error, return it immediately
+                if (batchResponse.getStatus() >= 400) {
+                    parser.close();
+                    return batchResponse;
+                }
+
+                // Print progress
+                double progressPercent = limit != null ?
+                        ((double) totalProcessedRows / limit) * 100 :
+                        ((double) totalProcessedRows / totalRows) * 100;
+
+                System.out.println(String.format("Progress: %.2f%% (%d/%d rows)",
+                        progressPercent, totalProcessedRows,
+                        limit != null ? limit : totalRows));
             }
+            parser.close();
             
-            List<String> columnNames;
-            List<List<Object>> allData;
-            
-            try {
-                // Wait for parsing to complete with timeout
-                columnNames = columnsFuture.get(30, TimeUnit.SECONDS);
-                allData = dataFuture.get(30, TimeUnit.SECONDS);
-            } catch (TimeoutException e) {
-                return Response.status(Response.Status.GATEWAY_TIMEOUT)
-                        .entity(new StatusMessage("Timeout parsing Parquet file")).build();
-            } catch (ExecutionException e) {
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity(new StatusMessage("Failed to process file: " + e.getCause().getMessage())).build();
-            }
-
-            // Calculate how many rows each node should get
-            int rowCount = 0;
-            if (!allData.isEmpty() && allData.get(0) != null) {
-                rowCount = allData.get(0).size();
-            }
-
-            if (rowCount == 0) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(new StatusMessage("No data found in file")).build();
-            }
-
-            int rowsPerNode = rowCount / nodeCount;
-            int remainderRows = rowCount % nodeCount;
-
-            List<CompletableFuture<Response>> futures = new ArrayList<>();
-
-            for (int nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
-                final int currentNodeIndex = nodeIndex;
-                ConfigurationManager.NodeConfig node = nodes.get(nodeIndex);
-
-                CompletableFuture<Response> future = CompletableFuture.supplyAsync(() -> {
-                    try {
-                        // Calculate start and end indices for this node's data portion
-                        int startRow = currentNodeIndex * rowsPerNode;
-                        int endRow = startRow + rowsPerNode;
-
-                        // Add remainder rows to the last node
-                        if (currentNodeIndex == nodeCount - 1) {
-                            endRow += remainderRows;
-                        }
-
-                        // Extract this node's portion of data
-                        List<List<Object>> nodeData = new ArrayList<>();
-                        for (List<Object> column : allData) {
-                            List<Object> nodeColumn = new ArrayList<>(column.subList(startRow, endRow));
-                            nodeData.add(nodeColumn);
-                        }
-
-                        // Create a data package to send to the node
-                        Map<String, Object> dataPackage = new HashMap<>();
-                        dataPackage.put("tableName", tableName);
-                        dataPackage.put("columns", columnNames);
-                        dataPackage.put("data", nodeData);
-
-                        System.out.println("Sending data to node " + node.getId() +
-                                          ": rows " + startRow + "-" + (endRow - 1));
-
-                        // Send the data portion to this node
-                        StatusMessage result = HttpClient.post(
-                                node,
-                                "/internal/insert-data",
-                                dataPackage,
-                                StatusMessage.class);
-
-                        return Response.status(Response.Status.OK)
-                                .entity(new StatusMessage("Data processed on node " + node.getId() +
-                                                         " (" + (endRow - startRow) + " rows)")).build();
-                    } catch (Exception e) {
-                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                .entity(new StatusMessage("Failed to process data on node " + node.getId() +
-                                                        ": " + e.getMessage())).build();
-                    }
-                }, executorService);
-
-                futures.add(future);
-            }
-
-            // Process responses with the helper method
-            String successMessage = "Data successfully distributed across " + nodeCount +
-                                    " nodes" + (limit != null ? 
-                                    " with a limit of " + limit + " rows" :
-                                    " (full file - " + rowCount + " rows)");
-            
-            return processNodeResponses(futures, successMessage, 60);
-            
+            return Response.status(Response.Status.OK)
+                .entity(new StatusMessage("Data successfully distributed across " + nodeCount +
+                        " nodes, total rows processed: " + totalProcessedRows)).build();
+                
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new StatusMessage("Failed to process file: " + e.getMessage())).build();
         }
+    }
+    
+    // Process a single batch of data by distributing it across nodes
+    private Response processBatch(
+            List<ConfigurationManager.NodeConfig> nodes, 
+            String tableName, 
+            List<String> columnNames, 
+            List<List<Object>> batchData) {
+        
+        int nodeCount = nodes.size();
+        int rowCount = batchData.get(0).size();
+        
+        int rowsPerNode = rowCount / nodeCount;
+        int remainderRows = rowCount % nodeCount;
+        
+        List<CompletableFuture<Response>> futures = new ArrayList<>();
+        
+        for (int nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
+            final int currentNodeIndex = nodeIndex;
+            ConfigurationManager.NodeConfig node = nodes.get(nodeIndex);
+            
+            CompletableFuture<Response> future = CompletableFuture.supplyAsync(() -> {
+                try {
+                    // Calculate start and end indices for this node's data portion
+                    int startRow = currentNodeIndex * rowsPerNode;
+                    int endRow = startRow + rowsPerNode;
+                    
+                    // Add remainder rows to the last node
+                    if (currentNodeIndex == nodeCount - 1) {
+                        endRow += remainderRows;
+                    }
+                    
+                    // Skip if there's no data for this node
+                    if (startRow >= rowCount || startRow == endRow) {
+                        return Response.status(Response.Status.OK)
+                            .entity(new StatusMessage("No data for node " + node.getId())).build();
+                    }
+                    
+                    // Extract this node's portion of data
+                    List<List<Object>> nodeData = new ArrayList<>();
+                    for (List<Object> column : batchData) {
+                        List<Object> nodeColumn = new ArrayList<>(column.subList(startRow, endRow));
+                        nodeData.add(nodeColumn);
+                    }
+                    
+                    // Create a data package to send to the node
+                    Map<String, Object> dataPackage = new HashMap<>();
+                    dataPackage.put("tableName", tableName);
+                    dataPackage.put("columns", columnNames);
+                    dataPackage.put("data", nodeData);
+                    
+                    // Send the data portion to this node
+                    StatusMessage result = HttpClient.post(
+                            node,
+                            "/internal/insert-data",
+                            dataPackage,
+                            StatusMessage.class);
+                    
+                    return Response.status(Response.Status.OK)
+                            .entity(new StatusMessage("Data processed on node " + node.getId() +
+                                                    " (" + (endRow - startRow) + " rows)")).build();
+                } catch (Exception e) {
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(new StatusMessage("Failed to process data on node " + node.getId() +
+                                                    ": " + e.getMessage())).build();
+                }
+            }, executorService);
+            
+            futures.add(future);
+        }
+        
+        // Process responses with the helper method
+        return processNodeResponses(futures, "Batch processed successfully", 60);
+    }
+    
+    // Check if memory is running low (less than 20% free)
+    private boolean isMemoryLow() {
+        Runtime runtime = Runtime.getRuntime();
+        long maxMemory = runtime.maxMemory();
+        long allocatedMemory = runtime.totalMemory();
+        long freeMemory = runtime.freeMemory();
+        
+        long totalFreeMemory = freeMemory + (maxMemory - allocatedMemory);
+        double freeRatio = (double) totalFreeMemory / maxMemory;
+        
+        System.out.println(String.format("Memory status: %.2f%% free", freeRatio * 100));
+        return freeRatio < 0.20; // Less than 20% free is considered low
     }
     
     @GET
@@ -426,3 +463,4 @@ public class DistributedController {
         }
     }
 }
+
