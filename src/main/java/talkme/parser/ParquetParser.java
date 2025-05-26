@@ -31,7 +31,7 @@ public class ParquetParser {
     private final List<Type> columnTypes;
     private final MessageType schema;
 
-    private final int limit;
+    private final Integer limit;
     private  final Path path;
 
 
@@ -45,7 +45,7 @@ public class ParquetParser {
         reader = ParquetFileReader.open(HadoopInputFile.fromPath(filePath, configuration));
         schema = reader.getFooter().getFileMetaData().getSchema();
 
-        this.path =filePath;
+        this.path = filePath;
 
         this.columnNames = extractColumnNames(schema);
         this.columnTypes = extractColumnTypes(schema);
@@ -85,7 +85,8 @@ public class ParquetParser {
             reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()));
 
             for (PageReadStore rowGroup; (rowGroup = reader.readNextRowGroup()) != null; ) {
-                if (columnData.size() >= limit) break;
+                // If limit is set and we've reached it, stop processing this row group
+                if (limit != null && columnData.size() >= limit) break;
 
                 ColumnReadStoreImpl columnReadStore = new ColumnReadStoreImpl(
                         rowGroup,
@@ -97,7 +98,10 @@ public class ParquetParser {
                 ColumnReader columnReader = columnReadStore.getColumnReader(colDescriptor);
                 long rowsInGroup = rowGroup.getRowCount();
 
-                for (int i = 0; i < rowsInGroup && columnData.size() < limit; i++) {
+                for (int i = 0; i < rowsInGroup; i++) {
+                    // If limit is set and we've reached it, stop processing rows
+                    if (limit != null && columnData.size() >= limit) break;
+                    
                     if (columnReader.getCurrentDefinitionLevel() == colDescriptor.getMaxDefinitionLevel()) {
                         switch (colDescriptor.getType()) {
                             case INT32 -> columnData.add(columnReader.getInteger());
@@ -143,4 +147,3 @@ public class ParquetParser {
         reader.close();
     }
 }
-

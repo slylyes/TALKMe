@@ -21,7 +21,7 @@ import org.apache.parquet.schema.Type;
 
 import static talkme.table.Database.tableMap;
 
-@Path("/api")
+@Path("/internal")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class TableController {

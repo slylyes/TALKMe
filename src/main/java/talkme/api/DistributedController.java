@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
-@Path("/distributed")
+@Path("/api")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class DistributedController {
@@ -34,7 +34,7 @@ public class DistributedController {
         for (ConfigurationManager.NodeConfig node : configManager.getNodes()) {
             CompletableFuture<Response> future = CompletableFuture.supplyAsync(() -> {
                 try {
-                    Table result = HttpClient.post(node, "/api/table", table, Table.class);
+                    Table result = HttpClient.post(node, "/internal/table", table, Table.class);
                     return Response.status(Response.Status.CREATED)
                             .entity(new StatusMessage("Table created on node " + node.getId())).build();
                 } catch (Exception e) {
@@ -169,7 +169,7 @@ public class DistributedController {
                         // Send the data portion to this node
                         StatusMessage result = HttpClient.post(
                                 node,
-                                "/api/insert-data",
+                                "/internal/insert-data",
                                 dataPackage,
                                 StatusMessage.class);
 
