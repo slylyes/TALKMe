@@ -1,6 +1,5 @@
 package talkme.http;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import talkme.api.StatusMessage;
 import talkme.config.ConfigurationManager;
@@ -102,8 +101,14 @@ public class HttpClient {
         return objectMapper.readValue(response.body(), responseType);
     }
     
-    public static <T> T uploadFile(ConfigurationManager.NodeConfig node, String path, File file, String tableName, int limit, Class<T> responseType) throws IOException, InterruptedException {
-        String url = node.getUrl() + path + "?tableName=" + tableName + "&limit=" + limit;
+    public static <T> T uploadFile(ConfigurationManager.NodeConfig node, String path, File file, String tableName, Integer limit, Class<T> responseType) throws IOException, InterruptedException {
+        // Build URL with optional limit parameter
+        StringBuilder urlBuilder = new StringBuilder(node.getUrl() + path + "?tableName=" + tableName);
+        if (limit != null) {
+            urlBuilder.append("&limit=").append(limit);
+        }
+        String url = urlBuilder.toString();
+        
         System.out.println("File upload to: " + url);
         System.out.println("File size: " + file.length() + " bytes");
         

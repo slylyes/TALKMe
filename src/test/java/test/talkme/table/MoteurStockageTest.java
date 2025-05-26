@@ -1,4 +1,3 @@
-/*
 package test.talkme.table;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -16,19 +15,19 @@ class MoteurStockageTest {
     private MoteurStockage moteurStockage;
     private Table table;
     private List<String> columnNames;
-    private Map<String, Column> columns;
 
     @BeforeEach
     void setup() {
-        moteurStockage = new MoteurStockage();
-        
         // Create columns with types and empty value lists
-        columns = new HashMap<>();
-        columns.put("col1", new Column("col1", "STRING", new ArrayList<>()));
-        columns.put("col2", new Column("col2", "INTEGER", new ArrayList<>()));
+        List<Column> columns = new ArrayList<>();
+        columns.add(new Column("col1", "STRING"));
+        columns.add(new Column("col2", "INTEGER"));
         
         // Create table with name and columns
         table = new Table("testTable", columns);
+        
+        // Create MoteurStockage with the table
+        moteurStockage = new MoteurStockage(table);
         
         // List of column names for testing
         columnNames = Arrays.asList("col1", "col2");
@@ -43,7 +42,7 @@ class MoteurStockageTest {
         );
         
         // Insert data
-        moteurStockage.insert(table, columnNames, data);
+        moteurStockage.insert(columnNames, data);
         
         // Verify the data was inserted correctly
         assertEquals(3, table.getColumns().get("col1").getValues().size(), "col1 should have 3 elements");
@@ -66,9 +65,8 @@ class MoteurStockageTest {
         );
         
         Exception exception = assertThrows(ColonnesException.class, 
-                () -> moteurStockage.insert(table, invalidColumns, rows));
+                () -> moteurStockage.insert(invalidColumns, rows));
         
         assertNotNull(exception.getMessage(), "Exception should have a message");
     }
 }
-*/

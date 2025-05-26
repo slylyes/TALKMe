@@ -1,4 +1,3 @@
-/*
 package test.talkme.table;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,13 +18,15 @@ class TableTest {
     @BeforeEach
     void setup() {
         // Create a map of columns for the table
-        Map<String, Column> columns = new HashMap<>();
-        columns.put("col1", new Column("col1", "STRING", new ArrayList<>()));
-        columns.put("col2", new Column("col2", "INTEGER", new ArrayList<>()));
+        List<Column> columns = new ArrayList<>();
+        columns.add(new Column("col1", "STRING"));
+        columns.add(new Column("col2", "INTEGER"));
         
         // Create the table with name and columns
         table = new Table("TestTable", columns);
-        moteur = new MoteurStockage();
+        
+        // Create MoteurStockage with the table
+        moteur = new MoteurStockage(table);
     }
 
     @Test
@@ -55,7 +56,7 @@ class TableTest {
         List<List<Object>> data = Arrays.asList(col1Data, col2Data);
         
         // Insert the data
-        moteur.insert(table, cols, data);
+        moteur.insert(cols, data);
         
         // Verify the data was inserted correctly
         List<Object> col1Values = table.getColumns().get("col1").getValues();
@@ -78,22 +79,7 @@ class TableTest {
         List<List<Object>> data = Arrays.asList(col1Data, col3Data);
         
         // Attempt to insert with invalid column should throw exception
-        assertThrows(ColonnesException.class, () -> moteur.insert(table, cols, data), 
+        assertThrows(ColonnesException.class, () -> moteur.insert(cols, data),
                 "Should throw exception when inserting into non-existent column");
     }
-
-    @Test
-    void testColumnEquality() {
-        Column col1 = new Column("col1", "STRING", Arrays.asList("A", "B"));
-        Column col2 = new Column("col2", "STRING", Arrays.asList("A", "B"));
-        Column col3 = new Column("col3", "INTEGER", Arrays.asList("A", "B"));
-        Column col4 = new Column("col4", "STRING", Arrays.asList(1, 2));
-        
-        assertTrue(col1.equals(col2), "Columns with same type and values should be equal");
-        assertFalse(col1.equals(col3), "Columns with different types should not be equal");
-        assertFalse(col1.equals(col4), "Columns with different value types should not be equal");
-        assertTrue(col1.equals(col1), "Column should be equal to itself");
-        assertFalse(col1.equals(null), "Column should not be equal to null");
-    }
 }
-*/

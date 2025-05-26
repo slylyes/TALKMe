@@ -36,7 +36,7 @@ public class ParquetParser {
 
 
 
-    public ParquetParser(File parquetFile, int limit) throws IOException {
+    public ParquetParser(File parquetFile, Integer limit) throws IOException {
         this.limit = limit;
 
         Path filePath = new Path(parquetFile.toURI().toString());

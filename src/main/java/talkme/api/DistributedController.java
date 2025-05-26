@@ -14,188 +14,216 @@ import javax.ws.rs.core.Response;
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 @Path("/distributed")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class DistributedController {
-    
+
     private final ConfigurationManager configManager = ConfigurationManager.getInstance();
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
-    
+
     @POST
     @Path("/table")
     public Response createTableAcrossNodes(@RequestBody Table table) {
-        List<Future<Response>> futures = new ArrayList<>();
+        // Create a list to hold all completable futures
+        List<CompletableFuture<Response>> futures = new ArrayList<>();
 
-        // Forward table creation request to all nodes
+        // Forward table creation request to all nodes asynchronously
         for (ConfigurationManager.NodeConfig node : configManager.getNodes()) {
-            futures.add(executorService.submit(() -> {
+            CompletableFuture<Response> future = CompletableFuture.supplyAsync(() -> {
                 try {
                     Table result = HttpClient.post(node, "/api/table", table, Table.class);
-
                     return Response.status(Response.Status.CREATED)
                             .entity(new StatusMessage("Table created on node " + node.getId())).build();
                 } catch (Exception e) {
-                    e.printStackTrace();
                     return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                             .entity(new StatusMessage("Failed to create table on node " + node.getId() + ": " + e.getMessage())).build();
                 }
-            }));
+            }, executorService);
+
+            futures.add(future);
         }
 
-        // Collect responses
-        List<Response> responses = futures.stream()
-                .map(future -> {
-                    try {
-                        return future.get(10, TimeUnit.SECONDS);
-                    } catch (Exception e) {
-                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                .entity(new StatusMessage("Error waiting for node response: " + e.getMessage())).build();
-                    }
-                })
-                .toList();
+        // Combine all futures and wait for them to complete
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(
+                futures.toArray(new CompletableFuture[0])
+        );
 
-        // If any node failed, return error
-        for (Response response : responses) {
-            if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
-                return response;
+        try {
+            // Wait for all futures to complete with a timeout
+            allFutures.get(30, TimeUnit.SECONDS);
+
+            // Collect all responses
+            List<Response> responses = futures.stream()
+                    .map(CompletableFuture::join)
+                    .toList();
+
+            // If any node failed, return error
+            for (Response response : responses) {
+                if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
+                    return response;
+                }
             }
-        }
 
-        return Response.status(Response.Status.CREATED)
-                .entity(new StatusMessage("Table successfully created across all nodes")).build();
+            return Response.status(Response.Status.CREATED)
+                    .entity(new StatusMessage("Table successfully created across all nodes")).build();
+        } catch (TimeoutException e) {
+            return Response.status(Response.Status.GATEWAY_TIMEOUT)
+                    .entity(new StatusMessage("Timeout waiting for nodes to respond")).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new StatusMessage("Error processing node responses: " + e.getMessage())).build();
+        }
     }
-    
+
     @POST
     @Path("/upload")
     @Consumes(MediaType.APPLICATION_OCTET_STREAM)
     public Response uploadFileAcrossNodes(
             @QueryParam("tableName") String tableName,
-            @QueryParam("limit") int limit,
+            @QueryParam("limit") Integer limit,
             File parquetFile) {
-        
+
         if (tableName == null || tableName.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new StatusMessage("Table name is required")).build();
         }
 
-        if (limit <= 0) {
+        // Limit is now optional - if provided, must be positive
+        if (limit != null && limit <= 0) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(new StatusMessage("Limit must be greater than 0")).build();
+                    .entity(new StatusMessage("If provided, limit must be greater than 0")).build();
         }
-        
+
         if (parquetFile == null || !parquetFile.exists()) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new StatusMessage("Invalid file uploaded")).build();
         }
-        
+
         try {
             // Parse the parquet file once on this node
+            // If limit is null, the parser will read the entire file
             ParquetParser parser = new ParquetParser(parquetFile, limit);
             List<String> columnNames = parser.getColumnNames();
             List<List<Object>> allData = parser.getNextBatch();
             parser.close();
-            
+
             // Determine how many nodes we have
             List<ConfigurationManager.NodeConfig> nodes = configManager.getNodes();
             int nodeCount = nodes.size();
-            
+
             if (nodeCount == 0) {
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                         .entity(new StatusMessage("No nodes configured")).build();
             }
-            
+
             // Calculate how many rows each node should get
             int rowCount = 0;
-            if (allData.size() > 0 && allData.get(0) != null) {
+            if (!allData.isEmpty() && allData.get(0) != null) {
                 rowCount = allData.get(0).size();
             }
-            
+
             if (rowCount == 0) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(new StatusMessage("No data found in file")).build();
             }
-            
+
             int rowsPerNode = rowCount / nodeCount;
             int remainderRows = rowCount % nodeCount;
-            
-            List<Future<Response>> futures = new ArrayList<>();
-            
+
+            List<CompletableFuture<Response>> futures = new ArrayList<>();
+
             for (int nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
                 final int currentNodeIndex = nodeIndex;
                 ConfigurationManager.NodeConfig node = nodes.get(nodeIndex);
-                
-                futures.add(executorService.submit(() -> {
+
+                CompletableFuture<Response> future = CompletableFuture.supplyAsync(() -> {
                     try {
                         // Calculate start and end indices for this node's data portion
                         int startRow = currentNodeIndex * rowsPerNode;
                         int endRow = startRow + rowsPerNode;
-                        
+
                         // Add remainder rows to the last node
                         if (currentNodeIndex == nodeCount - 1) {
                             endRow += remainderRows;
                         }
-                        
+
                         // Extract this node's portion of data
                         List<List<Object>> nodeData = new ArrayList<>();
                         for (List<Object> column : allData) {
                             List<Object> nodeColumn = new ArrayList<>(column.subList(startRow, endRow));
                             nodeData.add(nodeColumn);
                         }
-                        
+
                         // Create a data package to send to the node
                         Map<String, Object> dataPackage = new HashMap<>();
                         dataPackage.put("tableName", tableName);
                         dataPackage.put("columns", columnNames);
                         dataPackage.put("data", nodeData);
-                        
-                        System.out.println("Sending data to node " + node.getId() + 
+
+                        System.out.println("Sending data to node " + node.getId() +
                                           ": rows " + startRow + "-" + (endRow - 1));
-                        
+
                         // Send the data portion to this node
                         StatusMessage result = HttpClient.post(
                                 node,
                                 "/api/insert-data",
                                 dataPackage,
                                 StatusMessage.class);
-                        
+
                         return Response.status(Response.Status.OK)
-                                .entity(new StatusMessage("Data processed on node " + node.getId() + 
+                                .entity(new StatusMessage("Data processed on node " + node.getId() +
                                                          " (" + (endRow - startRow) + " rows)")).build();
                     } catch (Exception e) {
                         return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                .entity(new StatusMessage("Failed to process data on node " + node.getId() + 
+                                .entity(new StatusMessage("Failed to process data on node " + node.getId() +
                                                         ": " + e.getMessage())).build();
                     }
-                }));
+                }, executorService);
+
+                futures.add(future);
             }
-            
-            // Collect responses
-            List<Response> responses = futures.stream()
-                    .map(future -> {
-                        try {
-                            return future.get(30, TimeUnit.SECONDS);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                    .entity(new StatusMessage("Error waiting for node response: " + e.getMessage())).build();
-                        }
-                    })
-                    .toList();
-            
-            // Check if any node failed
-            for (Response response : responses) {
-                if (response.getStatus() != Response.Status.OK.getStatusCode()) {
-                    return response;
+
+            // Combine all futures and wait for them to complete
+            CompletableFuture<Void> allFutures = CompletableFuture.allOf(
+                futures.toArray(new CompletableFuture[0])
+            );
+
+            try {
+                // Wait for all futures to complete with a timeout
+                allFutures.get(60, TimeUnit.SECONDS);
+
+                // Collect all responses
+                List<Response> responses = futures.stream()
+                        .map(CompletableFuture::join)
+                        .toList();
+
+                // Check if any node failed
+                for (Response response : responses) {
+                    if (response.getStatus() != Response.Status.OK.getStatusCode()) {
+                        return response;
+                    }
                 }
+
+                // Create a response that includes information about how many rows were distributed
+                String limitInfo = limit != null ?
+                    " with a limit of " + limit + " rows" :
+                    " (full file - " + rowCount + " rows)";
+
+                return Response.status(Response.Status.OK)
+                        .entity(new StatusMessage("Data successfully distributed across " + nodeCount +
+                                                 " nodes" + limitInfo)).build();
+            } catch (TimeoutException e) {
+                return Response.status(Response.Status.GATEWAY_TIMEOUT)
+                        .entity(new StatusMessage("Timeout waiting for nodes to process data")).build();
+            } catch (Exception e) {
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(new StatusMessage("Error processing node responses: " + e.getMessage())).build();
             }
-            
-            return Response.status(Response.Status.OK)
-                    .entity(new StatusMessage("Data successfully distributed across all nodes")).build();
             
         } catch (Exception e) {
-            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new StatusMessage("Failed to process file: " + e.getMessage())).build();
         }
@@ -206,84 +234,86 @@ public class DistributedController {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response filterDataAcrossNodes(@RequestBody Query query) {
-
-        List<Future<List<Map<String, Object>>>> futures = new ArrayList<>();
-
         System.out.println("Received distributed filter query for: " +
-                           (query.getTable() != null ? query.getTable().getName() : "unknown table"));
+                          (query.getTable() != null ? query.getTable().getName() : "unknown table"));
 
-        // Forward query to all nodes
-        for (ConfigurationManager.NodeConfig node : configManager.getNodes()) {
-            futures.add(executorService.submit(() -> {
+        List<ConfigurationManager.NodeConfig> nodes = configManager.getNodes();
+        
+        // Create a list to store futures for all node responses
+        List<CompletableFuture<List<Map<String, Object>>>> futures = new ArrayList<>();
+
+        // Start all node queries in parallel
+        for (ConfigurationManager.NodeConfig node : nodes) {
+            CompletableFuture<List<Map<String, Object>>> future = CompletableFuture.supplyAsync(() -> {
                 try {
                     System.out.println("Sending query to node: " + node.getId());
                     // Use POST to send the query to each node
                     return HttpClient.post(node, "/data/filter", query, List.class);
                 } catch (Exception e) {
                     System.err.println("Error querying node " + node.getId() + ": " + e.getMessage());
-                    e.printStackTrace();
                     return new ArrayList<Map<String, Object>>();
                 }
-            }));
+            }, executorService);
+            
+            futures.add(future);
         }
 
-        // Merge results from all nodes
-        List<Map<String, Object>> combinedResults = new ArrayList<>();
-        boolean hasErrors = false;
-        StringBuilder errorMessages = new StringBuilder("Errors occurred when querying nodes: ");
+        // Create a single future that completes when all node queries complete
+        CompletableFuture<List<List<Map<String, Object>>>> allResults = CompletableFuture.allOf(
+                futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream()
+                        .map(future -> {
+                            try {
+                                return future.get(5, TimeUnit.SECONDS);
+                            } catch (Exception e) {
+                                System.err.println("Error retrieving results: " + e.getMessage());
+                                return new ArrayList<Map<String, Object>>();
+                            }
+                        })
+                        .collect(Collectors.toList()));
 
-        for (Future<List<Map<String, Object>>> future : futures) {
-            try {
-                List<Map<String, Object>> nodeResults = future.get(30, TimeUnit.SECONDS);
-                if (nodeResults != null) {
-                    combinedResults.addAll(nodeResults);
+        try {
+            // Wait for all results with timeout
+            List<List<Map<String, Object>>> nodeResults = allResults.get(60, TimeUnit.SECONDS);
+            
+            // Merge results from all nodes
+            List<Map<String, Object>> combinedResults = new ArrayList<>();
+            for (List<Map<String, Object>> nodeResult : nodeResults) {
+                if (nodeResult != null) {
+                    combinedResults.addAll(nodeResult);
                 }
-            } catch (Exception e) {
-                hasErrors = true;
-                errorMessages.append(e.getMessage()).append("; ");
-                System.err.println("Error getting results from node: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-
-        if (hasErrors && combinedResults.isEmpty()) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new StatusMessage(errorMessages.toString())).build();
-        }
-
-        System.out.println("Combined results from all nodes: " + combinedResults.size() + " rows");
-
-        System.out.println(query.getAggregates());
-
-
-        // Check if we need to handle group by
-        if (query.getGroupBy() != null && !query.getGroupBy().isEmpty()) {
-            System.out.println("Applying distributed group by with " + query.getGroupBy().size() + " columns");
-
-            // Create a temporary MoteurStockage to perform the group by operation
-            // Since we need a Table, we'll create a minimal one just for this operation
-            Table tempTable = null;
-            MoteurStockage tempMoteur = new MoteurStockage(tempTable);
-
-            // Perform the group by operation on the combined results
-            List<Map<String, Object>> groupedResults = tempMoteur.groupBy(
-                combinedResults,
-                query.getColumns(),
-                query.getGroupBy(),
-                query.getAggregates()
-            );
-            if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null){
-                groupedResults = tempMoteur.orderBy(groupedResults,query.getOrderBy(), query.getOrderDirection());
-            }
-            if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < groupedResults.size()) {
-                groupedResults = groupedResults.subList(0, query.getLimit());
             }
 
-            System.out.println("After distributed group by: " + groupedResults.size() + " rows");
-            return Response.ok(groupedResults).build();
-        }else {
-            // Check if we need to handle aggregates whith out group by
-            if (!query.getAggregates().isEmpty() && query.getAggregates() != null){
+            System.out.println("Combined results from all nodes: " + combinedResults.size() + " rows");
+
+            // Process group by if needed
+            if (query.getGroupBy() != null && !query.getGroupBy().isEmpty()) {
+                System.out.println("Applying distributed group by with " + query.getGroupBy().size() + " columns");
+
+                // Create a temporary MoteurStockage to perform the group by operation
+                Table tempTable = null;
+                MoteurStockage tempMoteur = new MoteurStockage(tempTable);
+
+                // Perform the group by operation on the combined results
+                List<Map<String, Object>> groupedResults = tempMoteur.groupBy(
+                    combinedResults,
+                    query.getColumns(),
+                    query.getGroupBy(),
+                    query.getAggregates()
+                );
+                
+                if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null) {
+                    groupedResults = tempMoteur.orderBy(groupedResults, query.getOrderBy(), query.getOrderDirection());
+                }
+                
+                if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < groupedResults.size()) {
+                    groupedResults = groupedResults.subList(0, query.getLimit());
+                }
+
+                System.out.println("After distributed group by: " + groupedResults.size() + " rows");
+                return Response.ok(groupedResults).build();
+            } else if (!query.getAggregates().isEmpty() && query.getAggregates() != null) {
+                // Check if we need to handle aggregates without group by
                 Table tempTable = null;
                 MoteurStockage tempMoteur = new MoteurStockage(tempTable);
 
@@ -294,28 +324,39 @@ public class DistributedController {
                         query.getAggregates()
                 );
 
-                if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null){
+                if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null) {
                     groupedResults = tempMoteur.orderBy(groupedResults, query.getOrderBy(), query.getOrderDirection());
                 }
-              if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < groupedResults.size()) {
+                
+                if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < groupedResults.size()) {
                     groupedResults = groupedResults.subList(0, query.getLimit());
                 }
 
                 System.out.println("After distributed aggregation: " + groupedResults.size() + " rows");
                 return Response.ok(groupedResults).build();
-
             }
-        }
 
-        if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null){
-            Table tempTable = null;
-            MoteurStockage tempMoteur = new MoteurStockage(tempTable);
-            combinedResults = tempMoteur.orderBy(combinedResults, query.getOrderBy(), query.getOrderDirection());
-        }
-        if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < combinedResults.size()) {
-            combinedResults = combinedResults.subList(0, query.getLimit());
-        }
+            // Apply ordering if needed
+            if (!query.getOrderBy().isEmpty() && query.getOrderBy() != null) {
+                Table tempTable = null;
+                MoteurStockage tempMoteur = new MoteurStockage(tempTable);
+                combinedResults = tempMoteur.orderBy(combinedResults, query.getOrderBy(), query.getOrderDirection());
+            }
+            
+            // Apply limit if needed
+            if (query.getLimit() != null && query.getLimit() > 0 && query.getLimit() < combinedResults.size()) {
+                combinedResults = combinedResults.subList(0, query.getLimit());
+            }
 
-        return Response.ok(combinedResults).build();
+            return Response.ok(combinedResults).build();
+            
+        } catch (TimeoutException e) {
+            return Response.status(Response.Status.GATEWAY_TIMEOUT)
+                    .entity(new StatusMessage("Timeout waiting for nodes to respond")).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new StatusMessage("Error processing query: " + e.getMessage())).build();
+        }
     }
 }
+
