@@ -30,7 +30,7 @@ public class TableController {
     public Response create(@RequestBody Table table) {
         if(table == null || table.getName() == null || table.getName().isEmpty()){
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(new StatusMessage("Nom de table invalide")).build();
+                    .entity(new StatusMessage("Invalid table name")).build();
         }
 
         // Ajout de la table dans la Map contenant toutes les tables
@@ -38,7 +38,7 @@ public class TableController {
             Database.add(table);
         }catch (SameNameException e){
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(new StatusMessage("Table de même nom existe déjà")).build();
+                    .entity(new StatusMessage("Table with same name already exists")).build();
         }
 
         return Response.status(Response.Status.CREATED)
