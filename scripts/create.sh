@@ -7,7 +7,7 @@ fi
 
 TABLE_NAME="$1"
 
-curl --noproxy localhost --location "http://localhost:8080/distributed/table" \
+curl --noproxy localhost --location "http://localhost:8080/api/table" \
 --header 'Content-Type: application/json' \
 --data '{
 "name": "'"$TABLE_NAME"'",

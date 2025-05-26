@@ -7,7 +7,7 @@ fi
 
 TABLE_NAME="$1"
 
-JSON=$(curl --silent --noproxy localhost --location --request GET 'http://localhost:8080/distributed/filter' \
+JSON=$(curl --silent --noproxy localhost --location --request GET 'http://localhost:8080/api/filter' \
 --header 'Content-Type: application/json' \
 --data '{
   "name": "'"$TABLE_NAME"'",
